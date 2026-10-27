@@ -1,0 +1,32 @@
+轻记 V1 — 第三方组件说明
+
+Tesseract.js 6.0.1
+https://github.com/naptha/tesseract.js
+Apache-2.0. License: vendor/tesseract/licenses/tesseract.js-LICENSE.txt
+
+Tesseract.js-core 6.0.0 and tessdata_fast (Chinese simplified and English)
+https://github.com/naptha/tesseract.js-core
+https://github.com/tesseract-ocr/tessdata_fast
+Apache-2.0. Exact versions, URLs, sizes and SHA-256 hashes: OCR-ASSETS.json
+License files are preserved in vendor/tesseract/.
+
+SheetJS Community Edition 0.20.3
+https://docs.sheetjs.com/docs/getting-started/installation/standalone/
+https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js
+Apache-2.0. License: vendor/SheetJS-LICENSE.txt
+SHA-256: cc015130aa8521e7f088f88898eba949ccdcbfb38df0bd129b44b7273c3a6f41
+
+Interface icons adapted from Lucide
+https://lucide.dev / https://github.com/lucide-icons/lucide
+ISC License. Copyright (c) for portions of Lucide are held by Cole Bemis 2013-2022
+as part of Feather and all other copyright (c) for Lucide are held by Lucide Contributors 2022.
+Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee
+is hereby granted, provided that the above copyright notice and this permission notice appear in all copies.
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE
+INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE
+LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER
+RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+Bookkeeping rules and import adapters are an original implementation. No BeeCount BSL source was copied.
+No third-party CDN or cloud model is called when recording or recognizing a receipt.

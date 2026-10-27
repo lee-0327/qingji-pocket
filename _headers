@@ -1,0 +1,11 @@
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  X-Frame-Options: DENY
+
+/sw.js
+  Cache-Control: no-cache
+
+/OCR-ASSETS.json
+  Cache-Control: no-cache

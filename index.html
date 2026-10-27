@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f6f7f2">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="轻记">
+  <meta name="description" content="一句话、选张截图，轻松记一笔。账目保存在当前浏览器，支持离线使用。">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <title>轻记 · 记账少一步</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./vendor/xlsx.full.min.js" defer></script>
+  <script src="./vendor/tesseract/tesseract.min.js" defer></script>
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#workspace">跳到记账区</a>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="轻记首页"><span class="brand-mark" aria-hidden="true">记</span><span>轻记<small>让记账轻一点</small></span></a>
+      <div class="local-badge"><span class="status-dot" aria-hidden="true"></span><span id="connection-label">本机账本</span></div>
+      <a class="help-link" href="./help.html" aria-label="使用帮助">使用帮助 <span aria-hidden="true">↗</span></a>
+    </header>
+    <main id="workspace" tabindex="-1">
+      <div id="storage-warning" class="notice warning" hidden></div>
+      <div id="update-notice" class="notice" hidden>有新版可用。请先保存当前草稿。<button id="apply-update" class="text-button">更新页面</button></div>
+      <section id="view-capture" class="view" aria-labelledby="capture-title">
+        <div class="page-heading"><div><p class="eyebrow" id="today-label"></p><h1 id="capture-title">这笔，轻松记下。</h1></div><button class="icon-button" id="manual-entry" aria-label="手动记一笔" title="手动记一笔"><span data-icon="plus"></span></button></div>
+        <div class="capture-layout">
+          <div class="compose-column">
+            <section class="composer surface" aria-labelledby="sentence-title">
+              <div class="section-title"><h2 id="sentence-title">说一句就好</h2><span class="subtle-tag">本地解析</span></div>
+              <label class="sr-only" for="sentence">描述你的收支</label>
+              <textarea id="sentence" maxlength="2000" placeholder="午饭 28，地铁 6&#10;也能说：昨天买书 45 元" rows="4"></textarea>
+              <div class="composer-foot"><p>可以用 iPhone 键盘的麦克风听写</p><button id="parse-sentence" class="button primary">识别并核对 <span data-icon="arrow-right"></span></button></div>
+              <p class="micro-copy">支持常用表达、多笔拆分、修改和撤销。复杂表达会请你补充。</p>
+            </section>
+            <div class="quick-actions">
+              <button id="pick-screenshot" class="quick-action screenshot-action"><span class="action-icon" data-icon="scan"></span><span><strong>截图记账</strong><small>选张截图，自动提取</small></span><span data-icon="chevron-right"></span></button>
+              <button id="pick-import" class="quick-action"><span class="action-icon" data-icon="file"></span><span><strong>导入账单</strong><small>微信 / 支付宝 · CSV、XLSX</small></span><span data-icon="chevron-right"></span></button>
+            </div>
+            <div id="ocr-progress" class="surface progress-panel" hidden aria-live="polite"><div class="row between"><strong id="ocr-progress-title">正在本机识别</strong><button id="cancel-ocr" class="text-button">取消</button></div><progress id="ocr-meter" max="1" value="0"></progress><p id="ocr-progress-detail">图片留在当前设备，不上传。</p></div>
+            <div id="conversation-reply" class="notice" hidden aria-live="polite"></div>
+            <section class="recent-section" aria-labelledby="recent-title"><div class="section-title"><h2 id="recent-title">最近记下的</h2><button class="text-button" data-view="ledger">全部流水 <span aria-hidden="true">→</span></button></div><div id="recent-list"></div></section>
+          </div>
+          <aside class="month-aside">
+            <section class="month-card"><div class="row between"><span id="summary-month">本月</span><span class="subtle-tag">净支出</span></div><div class="month-total"><small>¥</small><strong id="home-expense">0.00</strong></div><p id="home-count" class="muted">还没有记账，慢慢开始就好。</p><div class="mini-divider"></div><div class="summary-pair"><span>收入<strong id="home-income">¥0.00</strong></span><span>退款<strong id="home-refund">¥0.00</strong></span></div><div id="home-budget" class="budget-mini" hidden></div><button class="text-button month-detail" data-view="stats">看看本月花在哪 <span aria-hidden="true">↗</span></button></section>
+            <div class="privacy-note"><span data-icon="shield"></span><p>账目保存在当前浏览器。<br>不连接支付账户，不读取密码。</p></div>
+            <button id="backup-nudge" class="backup-nudge" hidden>给账本留份备份 <span aria-hidden="true">→</span></button>
+          </aside>
+        </div>
+      </section>
+      <section id="view-ledger" class="view" hidden aria-labelledby="ledger-title">
+        <div class="page-heading"><div><p class="eyebrow">每一笔都有迹可循</p><h1 id="ledger-title">我的流水</h1></div><button id="ledger-add" class="button primary compact">记一笔</button></div>
+        <div class="ledger-toolbar"><label class="search-field"><span data-icon="search"></span><span class="sr-only">搜索商家或备注</span><input id="ledger-search" type="search" placeholder="搜索商家、备注" maxlength="100"></label><label class="month-picker"><span class="sr-only">选择月份</span><input id="ledger-month" type="month"></label><button id="all-months" class="pill" aria-pressed="false">全部月份</button></div>
+        <div class="filter-tabs" role="group" aria-label="流水类型"><button data-filter="all" class="active" aria-pressed="true">全部</button><button data-filter="expense" aria-pressed="false">支出</button><button data-filter="income" aria-pressed="false">收入</button><button data-filter="refund" aria-pressed="false">退款</button><button data-filter="pending" aria-pressed="false">待核对 <span id="pending-count">0</span></button></div>
+        <div class="row between ledger-caption"><span id="ledger-caption" class="muted"></span><button id="export-csv" class="text-button">导出 CSV</button></div>
+        <div id="ledger-list"></div><button id="load-more" class="button secondary load-more" hidden>再显示 100 笔</button>
+      </section>
+      <section id="view-stats" class="view" hidden aria-labelledby="stats-title">
+        <div class="page-heading"><div><p class="eyebrow">知道钱花在哪，就够了</p><h1 id="stats-title">本月一眼看清</h1></div><label class="month-picker"><span class="sr-only">统计月份</span><input id="stats-month" type="month"></label></div>
+        <div class="stats-overview surface"><div><p class="muted">净支出 · 已扣除退款</p><div class="stats-total" id="stats-expense">¥0.00</div></div><div class="stats-secondary"><span>收入<strong id="stats-income">¥0.00</strong></span><span>支出 / 退款<strong id="stats-gross">¥0.00 / ¥0.00</strong></span><span>已确认笔数<strong id="stats-count">0</strong></span></div></div>
+        <div class="stats-grid"><section class="surface stats-section"><div class="section-title"><h2>花在哪些地方</h2><span class="muted">分类净支出</span></div><div id="category-chart"></div></section><section class="surface stats-section"><div class="section-title"><h2>给本月留个额度</h2><button id="edit-budget" class="text-button">设置预算</button></div><div id="budget-display"></div><p class="micro-copy">只做提醒，不限制记账。退款会抵减本月支出。</p></section></div>
+      </section>
+      <section id="view-settings" class="view" hidden aria-labelledby="settings-title">
+        <div class="page-heading"><div><p class="eyebrow">简单，也要放心</p><h1 id="settings-title">我的工具箱</h1></div><span class="version-tag">V1 · 试用版</span></div>
+        <div class="settings-grid">
+          <section class="surface settings-section"><div class="setting-heading"><span data-icon="download"></span><h2>给账本留个底</h2></div><p>完整备份包含流水、分类习惯和预算。浏览器数据可能被清理，建议定期保存。</p><div class="button-row"><button id="export-backup" class="button primary">完整备份</button><button id="import-backup" class="button secondary">从备份恢复</button></div><p id="backup-status" class="micro-copy">还没有导出过备份</p><p class="micro-copy">备份为未加密的 JSON 文件，请妥善保管。不同设备不会自动同步。</p></section>
+          <section class="surface settings-section"><div class="setting-heading"><span data-icon="wifi-off"></span><h2>离线也能记</h2></div><div class="ready-row"><span>记账页面</span><span id="shell-status" class="status-label">正在检查…</span></div><div class="ready-row"><span>截图识别包</span><span id="ocr-status" class="status-label">未准备</span></div><p id="offline-description">首次打开需要网络。准备好识别包后，选图识别也能在本机离线运行。</p><button id="prepare-offline" class="button secondary">准备离线识别包</button><progress id="offline-meter" max="1" value="0" hidden></progress><p id="storage-status" class="micro-copy"></p><button id="request-persistence" class="text-button">尽量保留本机数据</button></section>
+          <section class="surface settings-section"><div class="setting-heading"><span data-icon="spark"></span><h2>我记住的分类</h2></div><p>核对时改分类并勾选“记住这家商户”，以后会优先按你的习惯分类。</p><div id="rules-list"></div></section>
+          <section class="surface settings-section"><div class="setting-heading"><span data-icon="scan"></span><h2>iPhone 截图入口</h2></div><p>日常可直接选图。想截图后直接打开核对页，可按帮助页搭一个简短的系统自动化。</p><p id="bridge-context" class="micro-copy"></p><button id="copy-bridge" class="button secondary">复制当前账本入口</button><button id="reset-bridge" class="text-button">重置来源标记</button><p class="micro-copy">请在 Safari 普通网页中绑定。独立主屏 App 和 Safari 可能各有一本账，入口不要混用。自动化仍需 iPhone 真机验证。</p><a href="./help.html#shortcut" class="text-link">查看设置方法 ↗</a></section>
+          <section class="surface settings-section wide"><div class="setting-heading"><span data-icon="shield"></span><h2>权限和数据</h2></div><p>只处理你主动选择的图片和账单文件。不会登录微信、支付宝，不请求通讯录或支付权限，不调用付费 AI。图片识别后释放，不保存截图原图；提取的必要商户、金额和备注留在账本中。</p><p class="micro-copy">“一句话记账”使用本地规则，不是大模型对话。使用键盘听写时，语音的处理方式由你的 iPhone 设置决定。首次加载、下载识别包、检查更新时会请求网站资源；记账内容不由本工具上传。</p><a href="./help.html#privacy" class="text-link">了解数据边界与第三方组件 ↗</a></section>
+        </div>
+      </section>
+    </main>
+    <nav class="bottom-nav" aria-label="主导航"><button data-view="capture" class="active" aria-current="page"><span data-icon="plus-square"></span><span>记一笔</span></button><button data-view="ledger"><span data-icon="list"></span><span>流水</span></button><button data-view="stats"><span data-icon="chart"></span><span>统计</span></button><button data-view="settings"><span data-icon="settings"></span><span>设置</span></button></nav>
+    <footer class="app-footer">轻记 · 账目留在你的设备里</footer>
+  </div>
+  <input id="screenshot-file" type="file" accept="image/png,image/jpeg,image/webp,image/bmp" hidden>
+  <input id="bill-file" type="file" accept=".csv,.tsv,.xlsx" hidden>
+  <input id="backup-file" type="file" accept=".json,application/json" hidden>
+  <dialog id="review-dialog" class="sheet-dialog" aria-labelledby="review-title"><form id="review-form"><div class="dialog-heading"><div><p class="eyebrow" id="review-eyebrow">提取好了，最后看一眼</p><h2 id="review-title">核对这一笔</h2></div><button type="button" class="icon-button close-dialog" aria-label="关闭核对页"><span data-icon="x"></span></button></div><div class="review-fields"><div id="review-notice" class="notice warning" hidden></div><div id="draft-tabs" class="draft-tabs" hidden></div><div class="amount-field"><label for="review-amount">金额</label><div><span>¥</span><input id="review-amount" type="text" inputmode="decimal" placeholder="0.00" required autocomplete="off" maxlength="15"></div></div><div class="form-grid"><label>收支类型<select id="review-type"><option value="expense">支出</option><option value="income">收入</option><option value="refund">退款</option><option value="transfer">转账 · 不计收支</option></select></label><label>分类<select id="review-category"></select></label><label class="wide">商家 / 用途<input id="review-merchant" maxlength="100" placeholder="例如：午饭、便利店"></label><label>日期<input id="review-date" type="date" required></label><label>支付渠道<select id="review-channel"><option>其他</option><option>微信</option><option>支付宝</option></select></label><label class="wide">备注<input id="review-notes" maxlength="500" placeholder="可选"></label></div><label class="check-label"><input id="remember-category" type="checkbox">记住这家商户的分类</label><div id="duplicate-notice" class="notice warning" hidden></div><div id="review-errors" class="form-errors" role="alert" hidden></div></div><div class="dialog-actions"><button type="button" id="delete-record" class="text-button danger" hidden>删除这笔</button><button type="button" class="button secondary close-dialog">先不记</button><button type="submit" id="save-record" class="button primary">确认记下</button></div><p class="micro-copy center">确认后才会写入。可在流水中修改或撤销。</p></form></dialog>
+  <dialog id="import-dialog" class="sheet-dialog wide-dialog" aria-labelledby="import-title"><div class="dialog-heading"><div><p class="eyebrow">先预览，再入账</p><h2 id="import-title">账单导入</h2></div><button class="icon-button close-dialog" aria-label="关闭导入页"><span data-icon="x"></span></button></div><p id="import-summary"></p><div id="import-warnings" class="notice warning" hidden></div><div id="import-table-wrap" class="import-table-wrap"></div><p class="micro-copy">确定的重复账单会默认取消勾选。需要核对的项目暂不计入统计，保存后可在“待核对”中补全。可在导入后撤销整批。</p><details id="import-skips"><summary>查看未导入的行</summary><div id="import-skips-list"></div></details><p id="import-error" class="form-errors" role="alert" hidden></p><div class="dialog-actions"><button class="button secondary close-dialog">取消</button><button id="commit-import" class="button primary">导入所选记录</button></div></dialog>
+  <dialog id="confirm-dialog" class="sheet-dialog small-dialog" aria-labelledby="confirm-title"><h2 id="confirm-title"></h2><p id="confirm-description"></p><div class="dialog-actions"><button id="confirm-no" class="button secondary">取消</button><button id="confirm-yes" class="button primary">确认</button></div></dialog>
+  <dialog id="budget-dialog" class="sheet-dialog small-dialog" aria-labelledby="budget-title"><form id="budget-form"><div class="dialog-heading"><h2 id="budget-title">本月预算</h2><button type="button" class="icon-button close-dialog" aria-label="关闭预算设置"><span data-icon="x"></span></button></div><label class="form-label">每月额度（元）<input id="budget-amount" type="text" inputmode="decimal" placeholder="例如 3000" maxlength="15"></label><p class="micro-copy">保存到所选月份。留空可取消这个月的预算。</p><p id="budget-error" class="form-errors" role="alert" hidden></p><div class="dialog-actions"><button type="submit" class="button primary">保存预算</button></div></form></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden><span id="toast-message"></span><button id="undo-action" hidden>撤销</button></div>
+  <noscript><div class="notice warning">轻记需要开启 JavaScript 才能在本机处理和保存账目。</div></noscript>
+</body>
+</html>
