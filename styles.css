@@ -345,3 +345,5 @@ summary { min-height: 44px; }
 @media (prefers-reduced-motion:reduce) {
   *, *::before, *::after { scroll-behavior: auto!important; transition: none!important; animation: none!important; }
 }
+
+.heading-actions{display:flex;align-items:center;gap:12px}.update-check{font-size:14px;min-height:44px;padding:0 4px;white-space:nowrap}.update-status{margin:-8px 0 20px;padding:12px 16px;border:1px solid var(--line);border-radius:14px;background:var(--surface);font-size:13px;line-height:1.7;color:var(--green)}.update-status a,.app-footer a{color:var(--green);text-decoration:underline;text-underline-offset:3px}.app-footer a{display:inline-flex;align-items:center;min-height:44px}@media(max-width:360px){.heading-actions{gap:8px}.update-check{font-size:13px}}

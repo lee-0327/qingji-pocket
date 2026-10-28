@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f2f4f4">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'">
+  <title>更新轻记</title>
+  <link rel="icon" href="./icon.svg">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./update.js"></script>
+  <style>
+    body{min-height:100dvh;display:grid;place-items:center;padding:24px;background:#f2f4f4}
+    .update-page{min-height:0;width:100%;max-width:460px;padding:32px;border:1px solid #dde5df;border-radius:28px;background:#fff;box-shadow:0 20px 70px #2945360b}
+    .update-page h1{margin:24px 0 12px;font-size:28px}.update-page p{font-size:15px;line-height:1.8;color:#52635a}
+    .update-page .button{width:100%;margin-top:24px;min-height:48px}.update-page .return-link{display:flex;align-items:center;justify-content:center;min-height:44px;margin-top:12px;color:#28634e;font-size:14px}
+    #update-message{margin:20px 0 0;padding:14px 16px;background:#eef4ef;border-radius:14px;overflow-wrap:anywhere}
+    .update-page details{font-size:13px;margin-top:16px}.update-page summary{min-height:44px;align-content:center}.update-page details p{font-size:13px}
+    .update-page .brand{font-size:20px}.update-page .brand-mark{height:36px;width:36px;font-size:20px}
+  </style>
+</head>
+<body>
+  <main class="update-page">
+    <a class="brand" href="./"><span class="brand-mark" aria-hidden="true">记</span><span>轻记</span></a>
+    <h1>更新轻记</h1>
+    <p>联网检查并载入最新程序。完成后会回到账本。</p>
+    <p>请先保存其他页面中未完成的草稿。更新程序会保留当前浏览器里的账目。</p>
+    <p id="update-message" role="status" aria-live="polite">准备好后，点下方按钮。</p>
+    <button id="run-update" class="button primary" type="button">更新轻记</button>
+    <a class="return-link" href="./">先回到账本</a>
+    <details><summary>平时从 iPhone 桌面图标打开？</summary><p>请在平时记账的同一入口更新。若你现在用 Safari 打开这里，完成后回到桌面图标，联网重新打开轻记。Safari 与桌面网页 App 可能各有一份本机账本。</p></details>
+  </main>
+</body>
+</html>

@@ -30,7 +30,7 @@
       <div id="storage-warning" class="notice warning" hidden></div>
       <div id="update-notice" class="notice" hidden>有新版可用。请先保存当前草稿。<button id="apply-update" class="text-button">更新页面</button></div>
       <section id="view-capture" class="view" aria-labelledby="capture-title">
-        <div class="page-heading"><div><p class="eyebrow" id="today-label"></p><h1 id="capture-title">记一笔</h1></div><button class="icon-button" id="manual-entry" aria-label="手动记一笔" title="手动记一笔"><span data-icon="plus"></span></button></div>
+        <div class="page-heading"><div><p class="eyebrow" id="today-label"></p><h1 id="capture-title">记一笔</h1></div><div class="heading-actions"><button id="check-update" class="text-button update-check" type="button">检查更新</button><button class="icon-button" id="manual-entry" aria-label="手动记一笔" title="手动记一笔"><span data-icon="plus"></span></button></div></div><p id="update-status" class="update-status" role="status" hidden><span id="update-status-message"></span> <a id="update-recovery" href="./update.html" data-update-entry hidden>打开更新入口 ↗</a></p>
         <div class="capture-layout">
           <div class="compose-column">
             <div class="quick-actions">
@@ -79,7 +79,7 @@
       </section>
     </main>
     <nav class="bottom-nav" aria-label="主导航"><button data-view="capture" class="active" aria-current="page"><span data-icon="plus-square"></span><span>记一笔</span></button><button data-view="ledger"><span data-icon="list"></span><span>流水</span></button><button data-view="stats"><span data-icon="chart"></span><span>统计</span></button><button data-view="settings"><span data-icon="settings"></span><span>设置</span></button></nav>
-    <footer class="app-footer">轻记 · 账目留在你的设备里</footer>
+    <footer class="app-footer">轻记 · 账目留在你的设备里<br><span id="app-version"></span> · <a href="./update.html" data-update-entry>更新入口</a></footer>
   </div>
   <input id="screenshot-file" type="file" accept="image/png,image/jpeg,image/webp,image/bmp" hidden>
   <input id="bill-file" type="file" accept=".csv,.tsv,.xlsx" hidden>
