@@ -1,4 +1,4 @@
-const VERSION='qingji-shell-v1-pages-20261028-05';
+const VERSION='qingji-shell-v1-pages-20261028-06';
 const ROOT=new URL('./',self.location.href);
 const SHELL=['./','index.html','styles.css','app.js','manifest.webmanifest','icon.svg','icon-192.png','icon-512.png','help.html','THIRD-PARTY-NOTICES.txt','lib/core.js','lib/data.js','lib/storage.js','lib/icons.js','lib/importer.js','lib/ocr.js','lib/bill-file.js','bill-worker.js','vendor/xlsx.full.min.js','vendor/tesseract/tesseract.min.js'].map(path=>new URL(path,ROOT).href);
 self.addEventListener('install',event=>event.waitUntil((async()=>{const cache=await caches.open(VERSION);try{await cache.addAll(SHELL.map(url=>new Request(url,{cache:'reload',credentials:'same-origin'})));}catch(error){await caches.delete(VERSION);throw error;}if(!self.registration.active)await self.skipWaiting();})()));
