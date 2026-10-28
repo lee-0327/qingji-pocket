@@ -1,6 +1,6 @@
-const VERSION='qingji-shell-v1-pages-20261028-09';
+const VERSION='qingji-shell-v1-pages-20261028-10';
 const ROOT=new URL('./',self.location.href);
-const SHELL=['./','index.html','styles.css','app.js','manifest.webmanifest','icon.svg','icon-192.png','icon-512.png','help.html','update.html','update.js','THIRD-PARTY-NOTICES.txt','lib/core.js','lib/data.js','lib/storage.js','lib/icons.js','lib/importer.js','lib/ocr.js','lib/bill-file.js','lib/updates.js','bill-worker.js','vendor/xlsx.full.min.js','vendor/tesseract/tesseract.min.js'].map(path=>new URL(path,ROOT).href);
+const SHELL=['./','index.html','styles.css','app.js','manifest.webmanifest','icon.svg','icon-192.png','icon-512.png','help.html','update.html','update.js','THIRD-PARTY-NOTICES.txt','lib/core.js','lib/data.js','lib/storage.js','lib/icons.js','lib/importer.js','lib/ocr.js','lib/bill-file.js','lib/updates.js','lib/ai-client.js','lib/ai-ui.js','ai-worker.js','bill-worker.js','vendor/xlsx.full.min.js','vendor/tesseract/tesseract.min.js'].map(path=>new URL(path,ROOT).href);
 self.addEventListener('install',event=>event.waitUntil((async()=>{const cache=await caches.open(VERSION);try{await cache.addAll(SHELL.map(url=>new Request(url,{cache:'reload',credentials:'same-origin'})));}catch(error){await caches.delete(VERSION);throw error;}if(!self.registration.active)await self.skipWaiting();})()));
 self.addEventListener('activate',event=>event.waitUntil((async()=>{for(const key of await caches.keys())if(key.startsWith('qingji-shell-')&&key!==VERSION)await caches.delete(key);await self.clients.claim();})()));
 self.addEventListener('message',event=>{if(event.data?.type==='SKIP_WAITING')self.skipWaiting();if(event.data?.type==='GET_VERSION')event.ports?.[0]?.postMessage({version:VERSION});});
