@@ -1,7 +1,7 @@
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer
-  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  Permissions-Policy: camera=(), microphone=(self), geolocation=(), payment=(), usb=()
   X-Frame-Options: DENY
 
 /sw.js
