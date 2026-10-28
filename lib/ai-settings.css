@@ -1,0 +1,14 @@
+.ai-config { min-width: 0; display: grid; gap: 10px; }
+.ai-config .form-label { margin: 0; }
+.ai-config input, .ai-config select { width: 100%; min-width: 0; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: #fafbf7; color: var(--ink); font: inherit; font-size: 16px; }
+.ai-config .check-label { align-items: flex-start; gap: 10px; margin: 0; padding-block: 4px; font-size: 13px; line-height: 1.7; }
+.ai-config .check-label input { width: 18px; height: 18px; min-height: 18px; margin-top: 2px; padding: 0; flex: 0 0 auto; }
+.ai-config .micro-copy, #ai-settings > .micro-copy { margin: 0; font-size: 12px; line-height: 1.85; overflow-wrap: anywhere; }
+.ai-config .button-row { gap: 8px; margin: 0; }
+.ai-config .button-row button { min-height: 44px; font-size: 13px; }
+#ai-config-status:not(:empty), #ai-models-status:not(:empty) { padding: 10px 12px; border-radius: 10px; background: #edf3e7; color: #3f5a3c; }
+#ai-config-status[data-kind="error"] { background: #fff3e7; color: #805431; }
+#ai-detection-target { padding-top: 8px; color: #4e6148; }
+.ai-config [hidden] { display: none!important; }
+@media (max-width: 360px) { .ai-config .button-row { align-items: stretch; } .ai-config .button-row button { padding-inline: 10px; } }
+@media (forced-colors: active) { #ai-config-status:not(:empty), #ai-models-status:not(:empty) { background: Canvas; color: CanvasText; border: 1px solid CanvasText; } }
