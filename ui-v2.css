@@ -290,7 +290,67 @@ h2 { font-size: var(--v2-font-title); line-height: 1.4; }
 .bottom-nav button:hover { background: #e9efdf; }
 .bottom-nav svg { width: 22px; height: 22px; }
 .app-footer { padding-top: var(--v2-space-5); color: #66745d; font-size: 11px; }
-.toast { border-radius: 18px; background: #2c4f38; }
+.toast {
+  /* The navigation is 66px tall; leave at least 8px above it and its safe area. */
+  bottom: calc(max(16px, env(safe-area-inset-bottom)) + 74px);
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 2px;
+  width: max-content;
+  max-width: min(520px, calc(100% - 24px));
+  min-height: 48px;
+  padding: 1px 2px 1px 12px;
+  border: 1px solid #dfe5dd;
+  border-radius: 16px;
+  background: #fffefa;
+  color: #334239;
+  box-shadow: 0 4px 16px #28352e12;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.55;
+}
+.toast[hidden], .toast [hidden] { display: none!important; }
+#toast-message {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-height: min(160px, 28dvh);
+  overflow: auto;
+  overflow-wrap: anywhere;
+  padding: 8px 4px 8px 0;
+}
+.toast button {
+  flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 8px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: #3f5448;
+  font-size: 13px;
+  line-height: 1.3;
+}
+#undo-action { padding-inline: 10px; }
+#toast-close { width: 44px; height: 44px; color: #657268; box-shadow: none; }
+#toast-close svg { width: 16px; height: 16px; }
+#toast-close:active { transform: none; background: #e9eee7; }
+.toast button:focus-visible { outline: 2px solid #52715e; outline-offset: -2px; }
+@media (hover: hover) {
+  .toast button:hover { background: #f0f2ec; }
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .toast { background: rgb(255 254 250 / .94); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  .toast { background: #fffefa; -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+@media (forced-colors: active) {
+  .toast { background: Canvas; color: CanvasText; border-color: CanvasText; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .toast button, #toast-close { color: ButtonText; }
+  .toast button:focus-visible { outline-color: Highlight; }
+}
 
 @media (hover: none) {
   .bottom-nav button:not(.active):hover { background: transparent; color: #5b6b53; }

@@ -11,11 +11,12 @@ import{createChatUI}from'./lib/chat-ui.js';
 
 const $=id=>document.getElementById(id);
 const MAX_CENTS=99999999999,MAX_RECORDS=50000;
-const APP_VERSION='20261028-13';
+const APP_VERSION='20261028-14';
 const APP_CACHE='qingji-shell-v1-pages-'+APP_VERSION;
 const APP_VERSION_LABEL=APP_VERSION.replace(/^(\d{4})(\d{2})(\d{2})-(.+)$/,'$1.$2.$3.$4');
 const db=new LocalLedger();
 let state=null,busy=false,lastAction=null,review=null,importBatch=null,ocrAbort=null,offlineAbort=null,toastTimer=null;
+let toastRemaining=0,toastDeadline=0,toastPointerOver=false;
 let currentView='capture',ledgerFilter='all',ledgerStatsCategory='',showAllMonths=false,ledgerLimit=100,waitingWorker=null,appRegistration=null,updateBusy=false;
 let aiAssistant=null,chatUI=null,chatSaveBusy=false;
 const captureQueue=[];
@@ -26,7 +27,17 @@ const clone=value=>structuredClone(value);
 const moneyPlain=cents=>formatMoney(cents).replace('¥','');
 const dateLabel=date=>date?.slice(0,10).replaceAll('-',' / ')||'日期待核对';
 function friendlyError(error){if(error?.name==='QuotaExceededError')return'手机可用空间不足，未能保存。请先导出备份，再清理空间。';return error?.message||'这次没有完成，请再试一次。';}
-function showToast(message,undo=false){clearTimeout(toastTimer);$('toast-message').textContent=message;$('undo-action').hidden=!(undo&&lastAction);$('toast').hidden=false;toastTimer=setTimeout(()=>$('toast').hidden=true,undo?14000:6500);}
+function hideToast(){clearTimeout(toastTimer);toastTimer=null;toastRemaining=0;toastPointerOver=false;$('toast').hidden=true;}
+function pauseToast(){if(toastTimer===null)return;clearTimeout(toastTimer);toastTimer=null;toastRemaining=Math.max(0,toastDeadline-performance.now());}
+function resumeToast(){const toast=$('toast');if(toast.hidden||toastTimer!==null||toastPointerOver||toast.contains(document.activeElement))return;toastDeadline=performance.now()+toastRemaining;toastTimer=setTimeout(hideToast,toastRemaining);}
+function showToast(message,undo=false){
+ clearTimeout(toastTimer);toastTimer=null;
+ const text=String(message??'').trim();if(!text){hideToast();return;}
+ const canUndo=Boolean(undo&&lastAction);$('toast-message').textContent=text;$('undo-action').hidden=!canUndo;$('toast').hidden=false;
+ // Short feedback clears promptly; longer guidance gets time to be read.
+ // Deliberate hover or keyboard focus pauses dismissal without losing undo.
+ toastRemaining=canUndo?5000:Math.min(5000,Math.max(2500,Array.from(text).length*80));resumeToast();
+}
 function showReply(text){$('conversation-reply').textContent=text;$('conversation-reply').hidden=!text;}
 function updateSentenceActionNote(){if($('sentence-action-note'))$('sentence-action-note').textContent=$('sentence').value.trim()?'有未保存内容':'打字或键盘听写';}
 function setSentencePanel(open){if($('sentence-panel'))$('sentence-panel').hidden=!open;$('focus-sentence')?.setAttribute('aria-expanded',String(open));updateSentenceActionNote();}
@@ -223,6 +234,12 @@ function attachEvents(){
  $('export-backup').addEventListener('click',backup);$('backup-nudge').addEventListener('click',()=>showView('settings'));$('import-backup').addEventListener('click',()=>$('backup-file').click());$('backup-file').addEventListener('change',event=>{const file=event.target.files?.[0];event.target.value='';restore(file);});$('export-csv').addEventListener('click',()=>{if(!state)return;downloadFile(`轻记流水-${showAllMonths?'全部':$('ledger-month').value}.csv`,exportCSV(filteredRecords()),'text/csv;charset=utf-8');showToast('已发起当前筛选流水的 CSV 下载');});
  $('rules-list').addEventListener('click',async event=>{const button=event.target.closest('[data-remove-rule]');if(!button)return;try{await commit(next=>delete next.rules[button.dataset.removeRule]);showToast('已忘记这家商户的分类');}catch(error){showToast(friendlyError(error));}});
  $('import-table-wrap').addEventListener('change',event=>{if(!importBatch)return;if(event.target.id==='import-select-all'){importBatch.entries.forEach(entry=>entry.selected=event.target.checked);drawImport();}else if(event.target.dataset.importIndex!==undefined){importBatch.entries[Number(event.target.dataset.importIndex)].selected=event.target.checked;event.target.closest('tr').classList.toggle('unselected',!event.target.checked);importSummary();}});$('import-table-wrap').addEventListener('click',event=>{if(event.target.id==='import-show-more'&&importBatch){importBatch.limit+=200;drawImport();}});
+ $('toast-close').addEventListener('click',hideToast);
+ $('toast').addEventListener('pointerenter',event=>{if(event.pointerType==='mouse'){toastPointerOver=true;pauseToast();}});
+ $('toast').addEventListener('pointerleave',event=>{if(event.pointerType==='mouse'){toastPointerOver=false;resumeToast();}});
+ $('toast').addEventListener('focusin',pauseToast);
+ $('toast').addEventListener('focusout',event=>{if(!$('toast').contains(event.relatedTarget))queueMicrotask(resumeToast);});
+ document.addEventListener('visibilitychange',()=>{if(document.hidden)hideToast();});window.addEventListener('pagehide',hideToast);
  $('undo-action').addEventListener('click',undoLast);$('prepare-offline').addEventListener('click',prepareOffline);$('apply-update').addEventListener('click',applyProgramUpdate);$('check-update').addEventListener('click',checkAppUpdate);document.querySelectorAll('[data-update-entry]').forEach(link=>link.addEventListener('click',event=>{if(unfinishedWork()){event.preventDefault();showToast('请先保存或取消当前草稿，再打开更新入口。');}}));
  $('request-persistence').addEventListener('click',async()=>{if(!navigator.storage?.persist){showToast('当前浏览器不支持保留请求，请定期导出备份。');return;}const retained=await navigator.storage.persist().catch(()=>false);showToast(retained?'浏览器已同意尽量保留；仍建议定期备份。':'浏览器暂未同意长期保留，请用备份保护账目。');});
  $('copy-bridge').addEventListener('click',async()=>{if(!canUse())return;const base=new URL('./',location.href);const prefix=`${base.href}#ledger=${encodeURIComponent(state.ledgerId)}&source=${encodeURIComponent(state.sourceToken)}&capture=`;try{await navigator.clipboard.writeText(prefix);showToast('入口已复制，请仅放进你自己的快捷指令。');}catch{showToast('复制未成功，请用 Safari 普通网页并允许剪贴板写入。');}});
