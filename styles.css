@@ -12,3 +12,7 @@
 @media(max-width:640px){.quick-action>[data-icon]:last-child{display:none}.quick-action>span:not(.action-icon):not([data-icon]){flex-basis:100%}.quick-action{min-height:119px}}
 #review-form{display:flex;flex-direction:column;max-height:calc(90dvh - 58px)}#review-form .dialog-heading,#review-form>.dialog-actions,#review-form>.micro-copy{flex-shrink:0}.review-fields{min-height:0;overflow:auto;padding:3px 4px;margin:0 -4px;overscroll-behavior:contain}#review-form>.dialog-actions{margin-top:17px;padding-top:12px;border-top:1px solid var(--line)}#review-form>.micro-copy{margin-top:8px}.review-fields #duplicate-notice{margin-bottom:5px}
 @media(max-width:640px){#review-form{max-height:calc(90dvh - 50px)}#review-form .dialog-heading{margin-bottom:13px}#review-form>.dialog-actions{margin-top:12px;padding-top:10px}}
+
+.ocr-evidence{margin-top:20px;border-top:1px solid var(--line);padding-top:8px}.ocr-evidence summary{min-height:44px;display:list-item;align-content:center;cursor:pointer;color:var(--green);font-size:14px}.ocr-evidence label{display:block;font-size:12px;margin:8px 0}.ocr-evidence textarea{width:100%;resize:vertical;min-height:120px;border:1px solid var(--line);border-radius:12px;padding:12px;line-height:1.6;background:var(--paper)}.ocr-evidence .micro-copy{margin:8px 0}.ocr-evidence .button{margin:4px 0}#review-missing{margin-bottom:12px}
+
+#review-ocr-extra-text{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;font-size:12px;max-height:220px;overflow:auto;padding:12px;background:var(--paper);border-radius:12px}
