@@ -182,3 +182,6 @@
  .chat-turn-user .chat-bubble { background: Canvas; color: CanvasText; border-color: Highlight; }
  #chat-input, #view-chat #chat-add-image { background: Canvas; color: CanvasText; border-color: CanvasText; }
 }
+
+#chat-fix-model { flex: 1 1 auto; min-width: 0; text-align: left; line-height: 1.5; }
+#chat-remove-image { min-width: 44px; }
