@@ -11,7 +11,7 @@ import{createChatUI}from'./lib/chat-ui.js';
 
 const $=id=>document.getElementById(id);
 const MAX_CENTS=99999999999,MAX_RECORDS=50000;
-const APP_VERSION='20261028-15';
+const APP_VERSION='20261029-16';
 const APP_CACHE='qingji-shell-v1-pages-'+APP_VERSION;
 const APP_VERSION_LABEL=APP_VERSION.replace(/^(\d{4})(\d{2})(\d{2})-(.+)$/,'$1.$2.$3.$4');
 const db=new LocalLedger();
@@ -124,22 +124,25 @@ function editChatDraft(draft){
  if(!draft.date){review.drafts[0].date='';$('review-date').value='';}
  if(draft.needsAttention||!draft.date)$('review-more').open=true;
 }
-async function saveChatDraft(input){
+async function saveChatDraft(input,{automatic=false,signal}={}){
+ const stopped=()=>{if(signal?.aborted){const error=new Error('本次处理已停止。');error.name='AbortError';throw error;}};stopped();
  if(!canUse())throw new Error('本机账本尚未打开。');
  if(chatSaveBusy||busy)throw new Error('正在保存另一笔，请稍等一下。');
  if(!input||typeof input!=='object'||!input.id)throw new Error('这张卡片无效，请重新整理。');
  const existing=state.records.find(record=>record.id===input.id);if(existing)return clone(existing);
  if(input.needsAttention||input.currency!=='CNY'||!['stated','completed'].includes(input.paymentState)||!validDate(input.date)||input.date.slice(0,10)>localDate()||!String(input.merchant||'').trim())throw new Error('这笔还有信息需要核对，请点“补全并核对”。');
+ if(automatic&&input.type==='transfer'){const error=new Error('转账需要核对。');error.code='REVIEW_REQUIRED';throw error;}
  const draft=normalizeRecord({...input,source:'manual',notes:safeText([input.notes,'AI 对话整理'].filter(Boolean).join('；')),status:'confirmed'}),errors=recordErrors(draft);if(errors.length)throw new Error(errors.join('；'));
  chatSaveBusy=true;
  try{
   const revision=state.revision,duplicate=findDuplicate(draft,state.records);
   if(duplicate.level!=='none'){
+   if(automatic){const error=new Error('这笔可能已经记过，请核对后再保存。');error.code='DUPLICATE';throw error;}
    if(!await ask('这笔可能已经记过',`${duplicate.reason}。已有：${duplicate.record.merchant}，${formatMoney(duplicate.record.amountCents)}，${dateLabel(duplicate.record.date)}。请确认它们是两笔独立交易。`,'仍然记下'))return null;
    if(state.revision!==revision)throw new Error('账本刚有变化，请再核对一次这张卡片。');
   }
-  await commit(next=>{if(next.records.some(record=>record.id===draft.id))throw new Error('这张卡片已经记下。');next.records.push(draft);},{kind:'add',ids:[draft.id],before:null,description:'刚记下的 AI 账单'});
-  showToast('已记下，账目留在本机',true);return clone(draft);
+  stopped();await commit(next=>{stopped();if(next.records.some(record=>record.id===draft.id))throw new Error('这张卡片已经记下。');next.records.push(draft);},{kind:'add',ids:[draft.id],before:null,description:'刚记下的 AI 账单'});
+  if(currentView!=='chat')showToast('已记下，账目留在本机',true);return clone(draft);
  }finally{chatSaveBusy=false;}
 }
 async function saveReviewed(event){
@@ -153,7 +156,7 @@ async function saveReviewed(event){
  }catch(error){$('review-errors').textContent=friendlyError(error);$('review-errors').hidden=false;}finally{$('save-record').disabled=false;}
 }
 
-async function undoLast(){if(!lastAction){showToast('当前没有可以撤销的操作。');return;}const action=lastAction,revision=state.revision;if(!await ask('撤销'+action.description,action.kind==='import'?`将移除刚导入的 ${action.ids.length} 笔记录。`:'账本会恢复到这次操作之前的状态。','确认撤销'))return;if(state.revision!==revision||lastAction!==action){showToast('账本在确认期间有变化，本次撤销已取消，请重新查看。');return;}try{await commit(next=>{if(action.kind==='add'||action.kind==='import'){const ids=new Set(action.ids);next.records=next.records.filter(r=>!ids.has(r.id));}else if(action.kind==='edit'){const i=next.records.findIndex(r=>r.id===action.before.id);if(i>=0)next.records[i]=action.before;else next.records.push(action.before);}else if(action.kind==='delete')next.records.push(action.before);if(action.ruleName){if(action.oldRule===null)delete next.rules[action.ruleName];else next.rules[action.ruleName]=action.oldRule;}});lastAction=null;$('undo-action').hidden=true;showToast('已撤销');}catch(error){showToast(friendlyError(error));}}
+async function undoLast(){if(!lastAction){showToast('当前没有可以撤销的操作。');return;}const action=lastAction,revision=state.revision;if(!await ask('撤销'+action.description,action.kind==='import'?`将移除刚导入的 ${action.ids.length} 笔记录。`:'账本会恢复到这次操作之前的状态。','确认撤销'))return;if(state.revision!==revision||lastAction!==action){showToast('账本在确认期间有变化，本次撤销已取消，请重新查看。');return;}try{await commit(next=>{if(action.kind==='add'||action.kind==='import'){const ids=new Set(action.ids);next.records=next.records.filter(r=>!ids.has(r.id));}else if(action.kind==='edit'){const i=next.records.findIndex(r=>r.id===action.before.id);if(i>=0)next.records[i]=action.before;else next.records.push(action.before);}else if(action.kind==='delete')next.records.push(action.before);if(action.ruleName){if(action.oldRule===null)delete next.rules[action.ruleName];else next.rules[action.ruleName]=action.oldRule;}});lastAction=null;$('undo-action').hidden=true;if(currentView!=='chat')showToast('已撤销');}catch(error){showToast(friendlyError(error));}}
 async function parseSentence(){
  if(!canUse())return;const text=$('sentence').value.trim();const result=parseText(text,{rules:state.rules});if(result.intent==='create'){showReply(result.reply||'');openReview(result.drafts);if(review)review.sentenceText=text;}
  else if(result.intent==='edit'){const last=recentRecords()[0];if(!last){showReply('账本还是空的，先记下第一笔吧。');return;}openReview([{...last,...result.patch}],last.id);if(review)review.sentenceText=text;}
@@ -251,7 +254,7 @@ function consumeCapture(hash){const params=new URLSearchParams(hash.replace(/^#/
 function drainCaptures(){if(captureQueue.length&&!document.querySelector('dialog[open]')){showView('capture');openReview(captureQueue.shift());}}
 async function start(){
  aiAssistant=createAIAssistant({getContext:reviewAIContext,onApply:(field,value)=>{if(!review)return;const id={merchant:'review-merchant',category:'review-category',purpose:'review-purpose'}[field];if(!id)return;$(id).value=value;$(id).dispatchEvent(new Event('input',{bubbles:true}));}});
- chatUI=createChatUI({host:$('view-chat'),getService:()=>aiAssistant.getSessionInfo(),setSessionKey:key=>aiAssistant.setSessionKey(key),onConfigure:configureChatService,request:args=>aiAssistant.requestChat(args),onSave:saveChatDraft,onEdit:editChatDraft,getToday:()=>localDate(),getRecord:id=>{const record=state?.records.find(item=>item.id===id);return record?clone(record):null;}});
+  chatUI=createChatUI({host:$('view-chat'),getService:()=>aiAssistant.getSessionInfo(),setSessionKey:key=>aiAssistant.setSessionKey(key),onConfigure:configureChatService,request:args=>aiAssistant.requestChat(args),onSave:saveChatDraft,onEdit:editChatDraft,onUndo:undoLast,getUndoableId:()=>lastAction?.ids?.length===1?lastAction.ids[0]:null,getToday:()=>localDate(),getRecord:id=>{const record=state?.records.find(item=>item.id===id);return record?clone(record):null;}});
  $('app-version').textContent='版本 '+APP_VERSION_LABEL;renderIcons();renderStickers();$('review-category').innerHTML=CATEGORIES.map(category=>`<option>${category}</option>`).join('');$('today-label').textContent=new Date().toLocaleDateString('zh-CN',{month:'long',day:'numeric',weekday:'long'});$('ledger-month').value=thisMonth;$('stats-month').value=thisMonth;attachEvents();
  const incomingHash=location.hash;if(new URLSearchParams(incomingHash.replace(/^#/,'' )).has('capture'))history.replaceState(null,'',location.pathname+location.search);
  try{state=await db.open();renderAll();consumeCapture(incomingHash);}
