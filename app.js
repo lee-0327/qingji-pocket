@@ -11,7 +11,7 @@ import{createChatUI}from'./lib/chat-ui.js';
 
 const $=id=>document.getElementById(id);
 const MAX_CENTS=99999999999,MAX_RECORDS=50000;
-const APP_VERSION='20261029-17';
+const APP_VERSION='20261029-18';
 const APP_CACHE='qingji-shell-v1-pages-'+APP_VERSION;
 const APP_VERSION_LABEL=APP_VERSION.replace(/^(\d{4})(\d{2})(\d{2})-(.+)$/,'$1.$2.$3.$4');
 const db=new LocalLedger();
@@ -254,7 +254,7 @@ function consumeCapture(hash){const params=new URLSearchParams(hash.replace(/^#/
 function drainCaptures(){if(captureQueue.length&&!document.querySelector('dialog[open]')){showView('capture');openReview(captureQueue.shift());}}
 async function start(){
  aiAssistant=createAIAssistant({getContext:reviewAIContext,onApply:(field,value)=>{if(!review)return;const id={merchant:'review-merchant',category:'review-category',purpose:'review-purpose'}[field];if(!id)return;$(id).value=value;$(id).dispatchEvent(new Event('input',{bubbles:true}));}});
-  chatUI=createChatUI({host:$('view-chat'),getService:()=>aiAssistant.getSessionInfo(),setSessionKey:key=>aiAssistant.setSessionKey(key),onConfigure:configureChatService,request:args=>aiAssistant.requestChat(args),onSave:saveChatDraft,onEdit:editChatDraft,onUndo:undoLast,getUndoableId:()=>lastAction?.ids?.length===1?lastAction.ids[0]:null,getToday:()=>localDate(),getRecord:id=>{const record=state?.records.find(item=>item.id===id);return record?clone(record):null;}});
+  chatUI=createChatUI({host:$('view-chat'),getService:()=>aiAssistant.getSessionInfo(),setSessionKey:key=>aiAssistant.setSessionKey(key),onConfigure:configureChatService,request:args=>aiAssistant.requestChat(args),onSave:saveChatDraft,onEdit:editChatDraft,onUndo:undoLast,getUndoableId:()=>lastAction?.ids?.length===1?lastAction.ids[0]:null,getToday:()=>localDate(),isLedgerReady:()=>Boolean(state),sanitizeHistoryText:value=>aiAssistant.sanitizeHistoryText(value),getRecord:id=>{const record=state?.records.find(item=>item.id===id);return record?clone(record):null;}});
  $('app-version').textContent='版本 '+APP_VERSION_LABEL;renderIcons();renderStickers();$('review-category').innerHTML=CATEGORIES.map(category=>`<option>${category}</option>`).join('');$('today-label').textContent=new Date().toLocaleDateString('zh-CN',{month:'long',day:'numeric',weekday:'long'});$('ledger-month').value=thisMonth;$('stats-month').value=thisMonth;attachEvents();
  const incomingHash=location.hash;if(new URLSearchParams(incomingHash.replace(/^#/,'' )).has('capture'))history.replaceState(null,'',location.pathname+location.search);
  try{state=await db.open();renderAll();consumeCapture(incomingHash);}

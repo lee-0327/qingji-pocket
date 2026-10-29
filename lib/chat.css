@@ -185,3 +185,12 @@
 
 #chat-fix-model { flex: 1 1 auto; min-width: 0; text-align: left; line-height: 1.5; }
 #chat-remove-image { min-width: 44px; }
+.chat-heading-actions { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+.chat-heading-actions button { min-width: 44px; min-height: 44px; font-size: 12px; padding: 8px; }
+.chat-history-state { flex: 0 0 auto; margin: 0; padding: 6px 14px; font-size: 10px; line-height: 1.6; color: #6a7668; border-bottom: 1px solid #e0e5dc; background: #f7f9f3; overflow-wrap: anywhere; }
+.chat-history-state[data-kind=error] { color: #8b4532; background: #fff5ec; }
+.chat-readonly-bar { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border-top: 1px solid #dce3d5; background: #fafbf7; }
+.chat-readonly-bar span { font-size: 12px; color: var(--muted); }
+.chat-readonly-bar .button { min-height: 44px; font-size: 12px; padding: 9px 12px; }
+.chat-keyboard-active .chat-history-state { display: none; }
+@media (max-width:360px) { .chat-heading { gap: 6px; } .chat-heading-actions button { padding-inline: 5px; font-size: 11px; } .chat-heading .eyebrow { font-size: 10px; } }
