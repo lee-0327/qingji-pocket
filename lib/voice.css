@@ -39,6 +39,10 @@
 .voice-diagnostics-body { position: absolute; z-index: 25; bottom: calc(100% + 8px); right: 8px; width: min(280px,calc(100vw - 48px)); max-height: min(180px,32dvh); overflow: auto; padding: 12px; border: 1px solid #cddac5; border-radius: 12px; background: #fffefa; color: #53634f; box-shadow: 0 8px 24px #283f301c; }
 .voice-diagnostics-body p { font-size: 11px; line-height: 1.8; overflow-wrap: anywhere; margin: 0; }
 .voice-diagnostics-body p + p { margin-top: 7px; color: #75806e; }
+.voice-method-setting { margin: 8px 0; min-width: 0; }
+.voice-method-setting label { display: grid; gap: 5px; font-size: 12px; line-height: 1.7; color: #52634f; }
+.voice-method-setting select { width: 100%; min-width: 0; min-height: 44px; padding: 8px 10px; border: 1px solid #d6dfd0; border-radius: 10px; background: #fffefa; color: var(--ink,#344938); font-size: 16px; }
+.voice-method-setting p { font-size: 11px; line-height: 1.7; margin: 5px 0 0; color: #6a7863; }
 @media (max-width: 360px) { #view-chat .chat-voice-hold { font-size: 13px; } .voice-panel { padding: 10px 11px; } }
 @media (max-height: 650px) { #chat-voice-dialog { max-height: calc(100dvh - 24px); overflow: auto; } #chat-voice-live { max-height: 52px; } }
 @media (prefers-reduced-motion: reduce) { .voice-panel, #chat-voice-live, #chat-voice-time { animation: none; transition: none; scroll-behavior: auto; } }
