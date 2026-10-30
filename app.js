@@ -11,7 +11,7 @@ import{createChatUI}from'./lib/chat-ui.js';
 
 const $=id=>document.getElementById(id);
 const MAX_CENTS=99999999999,MAX_RECORDS=50000;
-const APP_VERSION='20261029-18';
+const APP_VERSION='20261030-19';
 const APP_CACHE='qingji-shell-v1-pages-'+APP_VERSION;
 const APP_VERSION_LABEL=APP_VERSION.replace(/^(\d{4})(\d{2})(\d{2})-(.+)$/,'$1.$2.$3.$4');
 const db=new LocalLedger();
