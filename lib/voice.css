@@ -31,6 +31,14 @@
 #chat-voice-dialog p { margin-top: 12px; color: #52634e; font-size: 14px; line-height: 1.85; }
 #chat-voice-dialog .dialog-actions { gap: 8px; flex-wrap: wrap; margin-top: 20px; }
 #chat-voice-dialog .dialog-actions button { min-height: 44px; font-size: 14px; }
+.voice-tools { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; min-width: 0; }
+.voice-tools[hidden] { display: none!important; }
+.voice-tools > button, #chat-voice-diagnostics > summary { min-height: 44px; padding: 8px 5px; font-size: 12px; line-height: 1.7; color: #47644c; }
+#chat-voice-diagnostics { flex: 0 0 auto; }
+#chat-voice-diagnostics > summary { cursor: pointer; align-content: center; }
+.voice-diagnostics-body { position: absolute; z-index: 25; bottom: calc(100% + 8px); right: 8px; width: min(280px,calc(100vw - 48px)); max-height: min(180px,32dvh); overflow: auto; padding: 12px; border: 1px solid #cddac5; border-radius: 12px; background: #fffefa; color: #53634f; box-shadow: 0 8px 24px #283f301c; }
+.voice-diagnostics-body p { font-size: 11px; line-height: 1.8; overflow-wrap: anywhere; margin: 0; }
+.voice-diagnostics-body p + p { margin-top: 7px; color: #75806e; }
 @media (max-width: 360px) { #view-chat .chat-voice-hold { font-size: 13px; } .voice-panel { padding: 10px 11px; } }
 @media (max-height: 650px) { #chat-voice-dialog { max-height: calc(100dvh - 24px); overflow: auto; } #chat-voice-live { max-height: 52px; } }
 @media (prefers-reduced-motion: reduce) { .voice-panel, #chat-voice-live, #chat-voice-time { animation: none; transition: none; scroll-behavior: auto; } }
