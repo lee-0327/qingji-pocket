@@ -9,17 +9,19 @@ import{checkForUpdate,activateUpdate,getWorkerVersion}from'./lib/updates.js';
 import{createAIAssistant}from'./lib/ai-ui.js';
 import{createChatUI}from'./lib/chat-ui.js';
 import{createSpendingUI}from'./lib/spending-ui.js';
+import{createBudgetUI}from'./lib/budget-ui.js';
+import{BUDGET_LIMITS,normalizeBudgetPlan,normalizeBudgetPlans,mergeBudgetPlans,buildBudgetOverview}from'./lib/budgets.js';
 
 const $=id=>document.getElementById(id);
 const MAX_CENTS=99999999999,MAX_RECORDS=50000;
-const APP_VERSION='20261031-24';
+const APP_VERSION='20261031-25';
 const APP_CACHE='qingji-shell-v1-pages-'+APP_VERSION;
 const APP_VERSION_LABEL=APP_VERSION.replace(/^(\d{4})(\d{2})(\d{2})-(.+)$/,'$1.$2.$3.$4');
 const db=new LocalLedger();
 let state=null,busy=false,lastAction=null,review=null,importBatch=null,ocrAbort=null,offlineAbort=null,toastTimer=null;
 let toastRemaining=0,toastDeadline=0,toastPointerOver=false;
 let currentView='capture',ledgerFilter='all',ledgerStatsCategory='',showAllMonths=false,ledgerLimit=100,waitingWorker=null,appRegistration=null,updateBusy=false;
-let aiAssistant=null,chatUI=null,spendingUI=null,chatSaveBusy=false;
+let aiAssistant=null,chatUI=null,spendingUI=null,budgetUI=null,legacyBudgetMonth='',legacyBudgetStamp=null,chatSaveBusy=false;
 const captureQueue=[];
 const thisMonth=localDate().slice(0,7);
 const typeLabels={expense:'支出',income:'收入',refund:'退款',transfer:'转账'};
@@ -62,11 +64,54 @@ function homeDayHeading(day){
  const totals=`净支出 ${formatMoney(summary.netExpenseCents)} · 收入 ${formatMoney(summary.incomeCents)}`;
  return`<div class="day-heading home-day-heading"><strong>${esc(label)}</strong><span class="home-day-totals">${esc(totals)}</span></div>`;
 }
+function renderHomeBudget(){
+ try{
+  const today=localDate(),month=today.slice(0,7),plans=normalizeBudgetPlans(state.budgetPlans),legacy=state.budgets?.[month],hasLegacy=Number.isSafeInteger(legacy)&&legacy>0&&legacy<=MAX_CENTS;
+  const active=plans.filter(plan=>plan.startDate<=today),total=active.find(plan=>plan.category==='all'),chosen=total||active[0]||plans[0],useLegacy=hasLegacy&&!total;
+  const items=buildBudgetOverview({records:state.records,budgets:useLegacy?{[month]:legacy}:{},budgetPlans:!useLegacy&&chosen?[chosen]:[]},{anchorMonth:month,today}).items;
+  const budget=items[0],count=plans.length+(hasLegacy?1:0);$('home-budget').hidden=!budget;$('home-budget-open').textContent=count?`查看 ${count} 条预算 →`:'设置预算';
+  $('home-budget-label').textContent=budget?'':'预算未设置';
+  if(budget){const remaining=budget.remainingCents;$('home-budget').innerHTML=`<strong>${esc(budget.name)}</strong><p>${esc(budget.start.replaceAll('-',' / '))} — ${esc(budget.end.replaceAll('-',' / '))}${budget.isFuture?' · 尚未开始':''}</p><div class="row between"><span>${budget.isFuture?'周期额度':remaining>=0?'预算还剩':'已超预算'}</span><span>${esc(formatMoney(budget.isFuture?budget.amountCents:Math.abs(remaining)))}</span></div><div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,budget.usedCents/budget.amountCents*100)}%"></div></div>`;}
+ }catch{$('home-budget').hidden=true;$('home-budget-label').textContent='预算暂时无法计算，请进入统计查看。';$('home-budget-open').textContent='查看预算';}
+}
+async function saveBudgetPlan(input,{existingId='',expectedUpdatedAt}={}){
+ if(!canUse())throw new Error('本机账本尚未打开。');
+ const plans=normalizeBudgetPlans(state.budgetPlans),before=existingId?plans.find(plan=>plan.id===existingId):null;
+ if(existingId&&(!before||before.updatedAt!==expectedUpdatedAt))throw new Error('这条预算已被其他页面修改，请保留当前内容，关闭后重新打开原预算。');
+ if(!existingId&&plans.length>=BUDGET_LIMITS.plans)throw new Error(`最多可设置 ${BUDGET_LIMITS.plans} 条预算，请先调整已有计划。`);
+ const stamp=new Date(Math.max(Date.now(),before?Date.parse(before.updatedAt)+1:0)).toISOString();
+ const plan=normalizeBudgetPlan({id:existingId||crypto.randomUUID(),name:input.name,amountCents:input.amountCents,category:input.category,startDate:input.startDate,createdAt:before?.createdAt||stamp,updatedAt:stamp});
+ await commit(next=>{const current=normalizeBudgetPlans(next.budgetPlans);if(existingId){const index=current.findIndex(value=>value.id===existingId);if(index<0||current[index].updatedAt!==expectedUpdatedAt)throw new Error('预算刚有变化，请重新核对后保存。');current[index]=plan;}else current.push(plan);next.budgetPlans=normalizeBudgetPlans(current);},{kind:'budget-plan',ids:[plan.id],before:before?clone(before):null,after:clone(plan),description:before?'本次预算修改':'刚新增的预算'});
+ showToast('预算已保存',true);return clone(plan);
+}
+async function removeBudgetPlan(source){
+ if(!canUse())return;const plan=normalizeBudgetPlan(source);
+ if(!await ask('删除这条预算计划',`将删除“${plan.name}”的预算设置，已记账目会保留。`,'删除预算'))return;
+ const current=normalizeBudgetPlans(state.budgetPlans).find(value=>value.id===plan.id);if(!current||current.updatedAt!==plan.updatedAt)throw new Error('这条预算已变化，请重新打开后操作。');
+ await commit(next=>{next.budgetPlans=normalizeBudgetPlans(next.budgetPlans).filter(value=>value.id!==plan.id);},{kind:'budget-plan',ids:[plan.id],before:clone(plan),after:null,description:'刚删除的预算'});showToast('预算已删除',true);
+}
+function openLegacyBudget(month){
+ if(!canUse()||!/^\d{4}-(0[1-9]|1[0-2])$/.test(month||''))return;
+ legacyBudgetMonth=month;legacyBudgetStamp=state.budgets[month]??null;$('budget-title').textContent=`${month} 原月预算`;$('budget-amount').value=legacyBudgetStamp?String(legacyBudgetStamp/100):'';$('budget-error').hidden=true;$('budget-dialog').showModal();
+}
+async function removeLegacyBudget(month){
+ if(!canUse())return;const before=state.budgets[month];if(!Number.isSafeInteger(before))return;
+ if(!await ask('删除原月预算',`将删除 ${month} 单独设置的总预算，已记账目会保留。`,'删除预算'))return;
+ if(state.budgets[month]!==before)throw new Error('预算刚有变化，请重新核对。');
+ await commit(next=>{delete next.budgets[month];},{kind:'budget-month',ids:[],month,before,after:null,description:'刚删除的原月预算'});showToast('预算已删除',true);
+}
+async function saveLegacyBudget(event){
+ event.preventDefault();if(!canUse()||!legacyBudgetMonth)return;
+ const month=legacyBudgetMonth,raw=$('budget-amount').value.trim(),amount=raw?parseMoney(raw):null;
+ if(raw&&(!Number.isSafeInteger(amount)||amount<=0||amount>MAX_CENTS)){$('budget-error').textContent='请输入大于 0、最多两位小数且不超过 999,999,999.99 元的预算。';$('budget-error').hidden=false;return;}
+ const button=$('budget-form').querySelector('[type="submit"]');button.disabled=true;
+ try{if((state.budgets[month]??null)!==legacyBudgetStamp)throw new Error('这条原月预算已变化，请关闭后重新打开。');const before=legacyBudgetStamp;await commit(next=>{if((next.budgets[month]??null)!==before)throw new Error('预算刚有变化，请重新核对。');if(amount===null)delete next.budgets[month];else next.budgets[month]=amount;},{kind:'budget-month',ids:[],month,before,after:amount,description:'本次原月预算修改'});$('budget-dialog').close();showToast('原月预算已保存',true);}
+ catch(error){$('budget-error').textContent=friendlyError(error);$('budget-error').hidden=false;}finally{button.disabled=false;}
+}
 function renderHome(){
  const summary=summarize(state.records,thisMonth);$('summary-month').textContent=`${Number(thisMonth.slice(5))} 月账本`;$('home-expense').textContent=moneyPlain(summary.netExpenseCents);$('home-income').textContent=formatMoney(summary.incomeCents);$('home-refund').textContent=formatMoney(summary.refundCents);$('home-count').textContent=summary.count?`记下 ${summary.count} 笔，都是生活的小痕迹。`:'还没有记账，慢慢开始就好。';
  const records=homeRecentRecords();let lastDay='';$('recent-list').innerHTML=records.length?records.map(record=>{const day=record.date.slice(0,10),heading=day!==lastDay?homeDayHeading(day):'';lastDay=day;return heading+recordRow(record);}).join(''):empty('先记下生活里的第一笔','选一张付款截图，或说一句「午饭 28」。');
- const budget=state.budgets[thisMonth];$('home-budget').hidden=!budget;if(budget){const used=Math.max(0,summary.netExpenseCents),remaining=budget-used;$('home-budget').innerHTML=`<div class="row between"><span>${remaining>=0?'预算还剩':'已超预算'}</span><span>${esc(formatMoney(Math.abs(remaining)))}</span></div><div class="bar-track"><div class="bar-fill" style="width:${Math.min(100,used/budget*100)}%"></div></div>`;}
- if($('home-budget-label'))$('home-budget-label').textContent=budget?`${budget-Math.max(0,summary.netExpenseCents)>=0?'剩余':'超出'} ${formatMoney(Math.abs(budget-Math.max(0,summary.netExpenseCents)))}`:'未设置';
+ renderHomeBudget();
  const backupAge=state.lastBackupAt?(Date.now()-Date.parse(state.lastBackupAt))/86400000:Infinity;$('backup-nudge').hidden=!state.records.length||backupAge<7;
 }
 function filteredRecords(){const query=$('ledger-search').value.trim().toLowerCase();const month=$('ledger-month').value;return state.records.filter(r=>(showAllMonths||r.date.startsWith(month))&&(!ledgerStatsCategory||((CATEGORIES.includes(r.category)?r.category:'其他')===ledgerStatsCategory&&r.status==='confirmed'&&['expense','refund'].includes(r.type)&&validDate(r.date)&&Number.isSafeInteger(r.amountCents)&&r.amountCents>0))&&(!query||`${r.merchant} ${r.purpose||''} ${r.notes} ${r.category}`.toLowerCase().includes(query))&&(ledgerFilter==='all'||(ledgerFilter==='pending'?r.status==='pending':r.type===ledgerFilter))).sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt.localeCompare(a.createdAt));}
@@ -85,8 +130,7 @@ function renderStats(){
  const month=$('stats-month').value||thisMonth;const summary=summarize(state.records,month);$('stats-expense').textContent=formatMoney(summary.netExpenseCents);$('stats-income').textContent=formatMoney(summary.incomeCents);$('stats-gross').textContent=`${formatMoney(summary.expenseCents)} / ${formatMoney(summary.refundCents)}`;$('stats-count').textContent=summary.count;
  if(currentView==='stats')spendingUI?.render({records:state.records,anchorMonth:month,today:localDate()});
  const items=Object.entries(summary.byCategory).filter(([,amount])=>amount!==0).sort((a,b)=>b[1]-a[1]);const max=Math.max(...items.map(([,amount])=>Math.abs(amount)),1);$('category-chart').innerHTML=items.length?items.map(([category,amount])=>`<button type="button" class="category-bar category-drilldown" data-stats-category="${esc(category)}" aria-label="查看${esc(month)}的${esc(category)}已确认支出与退款，净额${esc(formatMoney(amount))}"><span class="category-rank-icon">${categoryIcon(category)}</span><span class="category-rank-info"><span class="row between"><span>${esc(category)}</span><strong class="${amount<0?'negative':''}">${esc(formatMoney(amount))}${amount<0?' · 净退款':''}</strong></span><span class="bar-track"><span class="bar-fill" style="width:${Math.abs(amount)/max*100}%"></span></span></span><span class="category-rank-chevron">${icon('chevron-right')}</span></button>`).join(''):empty('这个月还没有分类支出','待核对和内部转账不计入收支金额。');
- const budget=state.budgets[month];if(!budget){$('budget-display').innerHTML=empty('暂时不设，也没关系','想控制开销时，给这个月设个总预算。');return;}
- const used=Math.max(0,summary.netExpenseCents),remaining=budget-used,over=remaining<0;$('budget-display').innerHTML=`<div class="budget-number">${esc(formatMoney(Math.abs(remaining)))}</div><div class="budget-label">${over?'本月超出预算':'本月剩余额度'} · 总预算 ${esc(formatMoney(budget))}</div><div class="budget-track ${over?'over':''}"><div style="width:${Math.min(100,used/budget*100)}%"></div></div><p class="budget-status ${over?'over':''}">已使用 ${(used/budget*100).toFixed(0)}%${over?'，后面的支出留意一点就好。':'，按自己的节奏来。'}</p>`;
+ if(currentView==='stats')budgetUI?.render({records:state.records,budgets:state.budgets,budgetPlans:state.budgetPlans,anchorMonth:month,today:localDate()});
 }
 function renderSettings(){
  $('backup-status').textContent=state.lastBackupAt?`上次发起备份：${new Date(state.lastBackupAt).toLocaleString('zh-CN')}（请确认文件已保存）`:'还没有导出过备份';
@@ -158,7 +202,7 @@ async function saveReviewed(event){
  }catch(error){$('review-errors').textContent=friendlyError(error);$('review-errors').hidden=false;}finally{$('save-record').disabled=false;}
 }
 
-async function undoLast(){if(!lastAction){showToast('当前没有可以撤销的操作。');return;}const action=lastAction,revision=state.revision;if(!await ask('撤销'+action.description,action.kind==='import'?`将移除刚导入的 ${action.ids.length} 笔记录。`:'账本会恢复到这次操作之前的状态。','确认撤销'))return;if(state.revision!==revision||lastAction!==action){showToast('账本在确认期间有变化，本次撤销已取消，请重新查看。');return;}try{await commit(next=>{if(action.kind==='add'||action.kind==='import'){const ids=new Set(action.ids);next.records=next.records.filter(r=>!ids.has(r.id));}else if(action.kind==='edit'){const i=next.records.findIndex(r=>r.id===action.before.id);if(i>=0)next.records[i]=action.before;else next.records.push(action.before);}else if(action.kind==='delete')next.records.push(action.before);if(action.ruleName){if(action.oldRule===null)delete next.rules[action.ruleName];else next.rules[action.ruleName]=action.oldRule;}});lastAction=null;$('undo-action').hidden=true;if(currentView!=='chat')showToast('已撤销');}catch(error){showToast(friendlyError(error));}}
+async function undoLast(){if(!lastAction){showToast('当前没有可以撤销的操作。');return;}const action=lastAction,revision=state.revision;if(!await ask('撤销'+action.description,action.kind==='import'?`将移除刚导入的 ${action.ids.length} 笔记录。`:action.kind.startsWith('budget-')?'将恢复这次操作之前的预算设置。':'账本会恢复到这次操作之前的状态。','确认撤销'))return;if(state.revision!==revision||lastAction!==action){showToast('账本在确认期间有变化，本次撤销已取消，请重新查看。');return;}try{await commit(next=>{if(action.kind==='add'||action.kind==='import'){const ids=new Set(action.ids);next.records=next.records.filter(r=>!ids.has(r.id));}else if(action.kind==='edit'){const i=next.records.findIndex(r=>r.id===action.before.id);if(i>=0)next.records[i]=action.before;else next.records.push(action.before);}else if(action.kind==='delete')next.records.push(action.before);if(action.kind==='budget-plan'){let plans=normalizeBudgetPlans(next.budgetPlans).filter(plan=>plan.id!==(action.after?.id||action.before.id));if(action.before)plans.push(action.before);next.budgetPlans=normalizeBudgetPlans(plans);}else if(action.kind==='budget-month'){if(action.before===null)delete next.budgets[action.month];else next.budgets[action.month]=action.before;}if(action.ruleName){if(action.oldRule===null)delete next.rules[action.ruleName];else next.rules[action.ruleName]=action.oldRule;}});lastAction=null;$('undo-action').hidden=true;if(currentView!=='chat')showToast('已撤销');}catch(error){showToast(friendlyError(error));}}
 async function parseSentence(){
  if(!canUse())return;const text=$('sentence').value.trim();const result=parseText(text,{rules:state.rules});if(result.intent==='create'){showReply(result.reply||'');openReview(result.drafts);if(review)review.sentenceText=text;}
  else if(result.intent==='edit'){const last=recentRecords()[0];if(!last){showReply('账本还是空的，先记下第一笔吧。');return;}openReview([{...last,...result.patch}],last.id);if(review)review.sentenceText=text;}
@@ -193,7 +237,7 @@ async function commitImport(){
 async function downloadFile(filename,content,type){const blob=new Blob([content],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;a.rel='noopener';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),120000);}
 async function backup(){if(!canUse())return;try{await downloadFile(`轻记完整备份-${localDate()}.json`,JSON.stringify(makeBackup(state),null,2),'application/json;charset=utf-8');await commit(next=>{next.lastBackupAt=new Date().toISOString();});showToast('已发起备份下载，请确认保存到“文件”中。');}catch(error){showToast(friendlyError(error));}}
 async function restore(file){
- if(!file||!canUse())return;try{if(file.size>25*1024*1024)throw new Error('备份文件超过 25MB，请拆分后再恢复。');const parsed=parseBackup(await file.text());const ids=new Set(state.records.map(r=>r.id));const additions=parsed.records.filter(r=>!ids.has(r.id));const existing=parsed.records.length-additions.length;if(!await ask('从这份备份恢复',`将加入 ${additions.length} 笔记录，合并分类习惯和预算。${existing?`${existing} 笔已有相同标识，保留本机版本。`:''}当前已有记录会保留。`,'确认合并恢复'))return;let added=0;await commit(next=>{const currentIds=new Set(next.records.map(r=>r.id));const fresh=parsed.records.filter(r=>!currentIds.has(r.id));added=fresh.length;next.records.push(...fresh);next.rules={...parsed.rules,...next.rules};next.budgets={...parsed.budgets,...next.budgets};});lastAction=null;showToast(`恢复完成，新增 ${added} 笔。`);}
+ if(!file||!canUse())return;try{if(file.size>25*1024*1024)throw new Error('备份文件超过 25MB，请拆分后再恢复。');const parsed=parseBackup(await file.text());const ids=new Set(state.records.map(r=>r.id));const additions=parsed.records.filter(r=>!ids.has(r.id));const existing=parsed.records.length-additions.length,mergedPlans=mergeBudgetPlans(state.budgetPlans,parsed.budgetPlans),addedPlans=mergedPlans.length-normalizeBudgetPlans(state.budgetPlans).length;if(!await ask('从这份备份恢复',`将加入 ${additions.length} 笔记录，合并分类习惯和预算，新增 ${addedPlans} 条预算计划；相同标识的预算保留本机设置。${existing?`${existing} 笔已有相同标识，保留本机版本。`:''}当前已有记录会保留。`,'确认合并恢复'))return;let added=0;await commit(next=>{const currentIds=new Set(next.records.map(r=>r.id));const fresh=parsed.records.filter(r=>!currentIds.has(r.id));added=fresh.length;next.records.push(...fresh);next.rules={...parsed.rules,...next.rules};next.budgets={...parsed.budgets,...next.budgets};next.budgetPlans=mergeBudgetPlans(next.budgetPlans,parsed.budgetPlans);});lastAction=null;showToast(`恢复完成，新增 ${added} 笔。`);}
  catch(error){showToast(friendlyError(error));}
 }
 async function refreshOfflineStatus(){
@@ -205,7 +249,7 @@ async function refreshOfflineStatus(){
 async function prepareOffline(){if(offlineAbort)return;offlineAbort=new AbortController();$('prepare-offline').disabled=true;$('offline-meter').hidden=false;try{await prepareOCR({signal:offlineAbort.signal,onProgress:progress=>{const value=typeof progress==='number'?progress:(progress.progress??0);$('offline-meter').value=value;$('ocr-status').textContent=`准备中 ${Math.round(value*100)}%`;}});await refreshOfflineStatus();showToast(navigator.serviceWorker?.controller?'识别包已准备。建议先用飞行模式试记一笔。':'识别包已下载，请联网刷新让离线页面生效。');}catch(error){showToast(friendlyError(error));await refreshOfflineStatus();}finally{offlineAbort=null;$('prepare-offline').disabled=false;$('offline-meter').hidden=true;}}
 function showUpdateStatus(message,recovery=false){$('update-status').hidden=false;$('update-status-message').textContent=message;$('update-recovery').hidden=!recovery;}
 function setUpdateWorker(worker){waitingWorker=worker||null;$('update-notice').hidden=!worker;if(!updateBusy)$('check-update').textContent=worker?'更新轻记':'检查更新';}
-function unfinishedWork(){return Boolean(busy||ocrAbort||offlineAbort||review||importBatch||aiAssistant?.hasUnsavedWork()||chatUI?.hasUnsavedWork()||document.querySelector('dialog[open]')||$('sentence').value.trim());}
+function unfinishedWork(){return Boolean(busy||ocrAbort||offlineAbort||review||importBatch||aiAssistant?.hasUnsavedWork()||chatUI?.hasUnsavedWork()||budgetUI?.hasUnsavedWork()||document.querySelector('dialog[open]')||$('sentence').value.trim());}
 function setUpdateBusy(value){updateBusy=value;$('check-update').disabled=value;$('apply-update').disabled=value;$('check-update').textContent=value?'正在检查…':waitingWorker?'更新轻记':'检查更新';}
 async function activateAndReload(target){if(unfinishedWork()){const message='请先保存或取消当前草稿，再更新。';showUpdateStatus(message);showToast(message);return false;}showUpdateStatus('正在载入新版，已保存的账目会保留。');await activateUpdate(target,{onStatus:showUpdateStatus});location.reload();return true;}
 async function applyProgramUpdate(){if(updateBusy)return;setUpdateBusy(true);try{if(!appRegistration&&!waitingWorker){showUpdateStatus('请先点“检查更新”。');return;}await activateAndReload(appRegistration||waitingWorker);}catch(error){showUpdateStatus(friendlyError(error),true);}finally{setUpdateBusy(false);}}
@@ -217,7 +261,7 @@ async function setupServiceWorker(){
 }
 
 function attachEvents(){
- document.querySelectorAll('[data-view]').forEach(el=>el.addEventListener('click',()=>showView(el.dataset.view)));
+ document.querySelectorAll('[data-view]').forEach(el=>el.addEventListener('click',()=>{if(el.id==='home-budget-open')$('stats-month').value=localDate().slice(0,7);showView(el.dataset.view);}));
  $('return-chat')?.addEventListener('click',()=>showView('chat'));
  document.querySelectorAll('.close-dialog').forEach(el=>el.addEventListener('click',()=>el.closest('dialog').close()));$('review-dialog').addEventListener('close',()=>{review=null;clearOCRText();});$('import-dialog').addEventListener('close',()=>importBatch=null);document.querySelectorAll('dialog').forEach(dialog=>dialog.addEventListener('close',()=>setTimeout(drainCaptures,0)));window.addEventListener('hashchange',()=>consumeCapture(location.hash));
  $('manual-entry').addEventListener('click',()=>openReview([normalizeRecord({source:'manual',status:'pending',amountCents:null,merchant:'',category:'其他'})]));$('ledger-add').addEventListener('click',()=>showView('capture'));
@@ -235,7 +279,7 @@ function attachEvents(){
  $('ledger-category-filter')?.addEventListener('click',()=>{ledgerStatsCategory='';ledgerLimit=100;renderLedger();});
  document.querySelectorAll('[data-filter]').forEach(button=>button.addEventListener('click',()=>{ledgerStatsCategory='';setLedgerTypeFilter(button.dataset.filter);ledgerLimit=100;renderLedger();}));$('load-more').addEventListener('click',()=>{ledgerLimit+=100;renderLedger();});
  $('category-chart').addEventListener('click',event=>{const button=event.target.closest('[data-stats-category]');if(button)openStatsCategory(button.dataset.statsCategory);});
- $('stats-month').addEventListener('input',renderStats);$('edit-budget').addEventListener('click',()=>{$('budget-amount').value=state.budgets[$('stats-month').value]?String(state.budgets[$('stats-month').value]/100):'';$('budget-error').hidden=true;$('budget-dialog').showModal();});$('budget-form').addEventListener('submit',async event=>{event.preventDefault();const amount=$('budget-amount').value.trim()?parseMoney($('budget-amount').value):null;if($('budget-amount').value.trim()&&(!amount||amount<0||amount>MAX_CENTS)){$('budget-error').textContent='请输入大于 0、最多两位小数且不超过 999,999,999.99 元的预算。';$('budget-error').hidden=false;return;}try{await commit(next=>{if(amount===null)delete next.budgets[$('stats-month').value];else next.budgets[$('stats-month').value]=amount;});$('budget-dialog').close();showToast('预算已保存');}catch(error){showToast(friendlyError(error));}});
+ $('stats-month').addEventListener('input',renderStats);$('budget-form').addEventListener('submit',saveLegacyBudget);
  $('export-backup').addEventListener('click',backup);$('backup-nudge').addEventListener('click',()=>showView('settings'));$('import-backup').addEventListener('click',()=>$('backup-file').click());$('backup-file').addEventListener('change',event=>{const file=event.target.files?.[0];event.target.value='';restore(file);});$('export-csv').addEventListener('click',()=>{if(!state)return;downloadFile(`轻记流水-${showAllMonths?'全部':$('ledger-month').value}.csv`,exportCSV(filteredRecords()),'text/csv;charset=utf-8');showToast('已发起当前筛选流水的 CSV 下载');});
  $('rules-list').addEventListener('click',async event=>{const button=event.target.closest('[data-remove-rule]');if(!button)return;try{await commit(next=>delete next.rules[button.dataset.removeRule]);showToast('已忘记这家商户的分类');}catch(error){showToast(friendlyError(error));}});
  $('import-table-wrap').addEventListener('change',event=>{if(!importBatch)return;if(event.target.id==='import-select-all'){importBatch.entries.forEach(entry=>entry.selected=event.target.checked);drawImport();}else if(event.target.dataset.importIndex!==undefined){importBatch.entries[Number(event.target.dataset.importIndex)].selected=event.target.checked;event.target.closest('tr').classList.toggle('unselected',!event.target.checked);importSummary();}});$('import-table-wrap').addEventListener('click',event=>{if(event.target.id==='import-show-more'&&importBatch){importBatch.limit+=200;drawImport();}});
@@ -256,8 +300,9 @@ function consumeCapture(hash){const params=new URLSearchParams(hash.replace(/^#/
 function drainCaptures(){if(captureQueue.length&&!document.querySelector('dialog[open]')){showView('capture');openReview(captureQueue.shift());}}
 async function start(){
  spendingUI=createSpendingUI({host:$('spending-trend'),renderRecord:recordRow});
+ budgetUI=createBudgetUI({host:$('budget-plans'),renderRecord:recordRow,onSavePlan:saveBudgetPlan,onRemovePlan:removeBudgetPlan,onEditLegacy:openLegacyBudget,onRemoveLegacy:removeLegacyBudget,getToday:()=>localDate(),getAnchorMonth:()=>$('stats-month').value||thisMonth});
  aiAssistant=createAIAssistant({getContext:reviewAIContext,onApply:(field,value)=>{if(!review)return;const id={merchant:'review-merchant',category:'review-category',purpose:'review-purpose'}[field];if(!id)return;$(id).value=value;$(id).dispatchEvent(new Event('input',{bubbles:true}));}});
-  chatUI=createChatUI({host:$('view-chat'),getService:()=>aiAssistant.getSessionInfo(),setSessionKey:key=>aiAssistant.setSessionKey(key),onConfigure:configureChatService,request:args=>aiAssistant.requestChat(args),onSave:saveChatDraft,onEdit:editChatDraft,onUndo:undoLast,getUndoableId:()=>lastAction?.ids?.length===1?lastAction.ids[0]:null,getToday:()=>localDate(),isLedgerReady:()=>Boolean(state),sanitizeHistoryText:value=>aiAssistant.sanitizeHistoryText(value),getRecord:id=>{const record=state?.records.find(item=>item.id===id);return record?clone(record):null;}});
+  chatUI=createChatUI({host:$('view-chat'),getService:()=>aiAssistant.getSessionInfo(),setSessionKey:key=>aiAssistant.setSessionKey(key),onConfigure:configureChatService,request:args=>aiAssistant.requestChat(args),onSave:saveChatDraft,onEdit:editChatDraft,onUndo:undoLast,getUndoableId:()=>lastAction?.ids?.length===1&&!lastAction.kind.startsWith('budget-')?lastAction.ids[0]:null,getToday:()=>localDate(),isLedgerReady:()=>Boolean(state),sanitizeHistoryText:value=>aiAssistant.sanitizeHistoryText(value),getRecord:id=>{const record=state?.records.find(item=>item.id===id);return record?clone(record):null;}});
  $('app-version').textContent='版本 '+APP_VERSION_LABEL;renderIcons();renderStickers();$('review-category').innerHTML=CATEGORIES.map(category=>`<option>${category}</option>`).join('');$('today-label').textContent=new Date().toLocaleDateString('zh-CN',{month:'long',day:'numeric',weekday:'long'});$('ledger-month').value=thisMonth;$('stats-month').value=thisMonth;attachEvents();
  const incomingHash=location.hash;if(new URLSearchParams(incomingHash.replace(/^#/,'' )).has('capture'))history.replaceState(null,'',location.pathname+location.search);
  try{state=await db.open();renderAll();consumeCapture(incomingHash);}

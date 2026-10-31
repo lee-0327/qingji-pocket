@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="./styles.css">
   <link rel="stylesheet" href="./ui-v2.css">
   <link rel="stylesheet" href="./lib/spending.css">
+  <link rel="stylesheet" href="./lib/budget.css">
   <link rel="stylesheet" href="./lib/chat.css">
   <link rel="stylesheet" href="./lib/chat-history.css">
   <link rel="stylesheet" href="./lib/voice.css">
@@ -48,6 +49,7 @@
               <div class="mini-divider"></div>
               <div class="summary-pair"><span>收入<strong id="home-income">¥0.00</strong></span><span>退款<strong id="home-refund">¥0.00</strong></span></div>
               <p id="home-budget-label" class="home-budget-label">预算未设置</p><div id="home-budget" class="budget-mini" hidden></div>
+              <button id="home-budget-open" class="text-button" data-view="stats" type="button">设置预算</button>
               <button class="text-button month-detail" data-view="stats">看看本月花在哪 <span aria-hidden="true">↗</span></button>
             </section>
             <div class="privacy-note"><span data-icon="shield"></span><p>账目保存在当前浏览器，不连接支付账户。</p></div>
@@ -83,8 +85,9 @@
       <section id="view-stats" class="view" hidden aria-labelledby="stats-title">
         <div class="page-heading"><div><p class="eyebrow">收支一览</p><h1 id="stats-title">统计</h1></div><label class="month-picker"><span class="sr-only">统计月份</span><input id="stats-month" type="month"></label></div>
         <div class="stats-overview surface"><div><p class="muted">净支出 · 已扣除退款</p><div class="stats-total" id="stats-expense">¥0.00</div></div><div class="stats-secondary"><span>收入<strong id="stats-income">¥0.00</strong></span><span>支出 / 退款<strong id="stats-gross">¥0.00 / ¥0.00</strong></span><span>已确认笔数<strong id="stats-count">0</strong></span></div></div>
+        <section id="budget-plans" class="surface budget-section" aria-label="预算计划"><p class="micro-copy" role="status">正在读取本机预算…</p></section>
         <section id="spending-trend" class="surface spending-section" aria-label="每周和每月支出趋势"><p class="micro-copy" role="status">正在整理本机支出…</p></section>
-        <div class="stats-grid"><section class="surface stats-section"><div class="section-title"><h2>支出分类</h2><span class="muted">点分类看明细</span></div><div id="category-chart"></div></section><section class="surface stats-section"><div class="section-title"><h2>本月预算</h2><button id="edit-budget" class="text-button">设置预算</button></div><div id="budget-display"></div><p class="micro-copy">只做提醒，不限制记账。退款会抵减本月支出。</p></section></div>
+        <section class="surface stats-section"><div class="section-title"><h2>支出分类</h2><span class="muted">点分类看明细</span></div><div id="category-chart"></div></section>
       </section>
       <section id="view-settings" class="view" hidden aria-labelledby="settings-title">
         <div class="page-heading"><div><p class="eyebrow">本机账本</p><h1 id="settings-title">设置</h1></div><div class="heading-actions"><span class="version-tag">本机 · 免登录</span><button id="return-chat" type="button" class="text-button" hidden>返回 AI 对话</button></div></div>
@@ -136,7 +139,7 @@
   </dialog>
   <dialog id="import-dialog" class="sheet-dialog wide-dialog" aria-labelledby="import-title"><div class="dialog-heading"><div><p class="eyebrow">先预览，再入账</p><h2 id="import-title">账单导入</h2></div><button class="icon-button close-dialog" aria-label="关闭导入页"><span data-icon="x"></span></button></div><p id="import-summary"></p><div id="import-warnings" class="notice warning" hidden></div><div id="import-table-wrap" class="import-table-wrap"></div><p class="micro-copy">确定的重复账单会默认取消勾选。需要核对的项目暂不计入统计，保存后可在“待核对”中补全。可在导入后撤销整批。</p><details id="import-skips"><summary>查看未导入的行</summary><div id="import-skips-list"></div></details><p id="import-error" class="form-errors" role="alert" hidden></p><div class="dialog-actions"><button class="button secondary close-dialog">取消</button><button id="commit-import" class="button primary">导入所选记录</button></div></dialog>
   <dialog id="confirm-dialog" class="sheet-dialog small-dialog" aria-labelledby="confirm-title"><h2 id="confirm-title"></h2><p id="confirm-description"></p><div class="dialog-actions"><button id="confirm-no" class="button secondary">取消</button><button id="confirm-yes" class="button primary">确认</button></div></dialog>
-  <dialog id="budget-dialog" class="sheet-dialog small-dialog" aria-labelledby="budget-title"><form id="budget-form"><div class="dialog-heading"><h2 id="budget-title">本月预算</h2><button type="button" class="icon-button close-dialog" aria-label="关闭预算设置"><span data-icon="x"></span></button></div><label class="form-label">每月额度（元）<input id="budget-amount" type="text" inputmode="decimal" placeholder="例如 3000" maxlength="15"></label><p class="micro-copy">保存到所选月份。留空可取消这个月的预算。</p><p id="budget-error" class="form-errors" role="alert" hidden></p><div class="dialog-actions"><button type="submit" class="button primary">保存预算</button></div></form></dialog>
+  <dialog id="budget-dialog" class="sheet-dialog small-dialog" aria-labelledby="budget-title"><form id="budget-form"><div class="dialog-heading"><h2 id="budget-title">调整原月预算</h2><button type="button" class="icon-button close-dialog" aria-label="关闭预算设置"><span data-icon="x"></span></button></div><label class="form-label">每月额度（元）<input id="budget-amount" type="text" inputmode="decimal" placeholder="例如 3000" maxlength="15"></label><p class="micro-copy">这是原来单独设置的自然月预算，仅保存到该月份；留空取消。新增周期或分类预算，请使用“新增预算”。</p><p id="budget-error" class="form-errors" role="alert" hidden></p><div class="dialog-actions"><button type="submit" class="button primary">保存预算</button></div></form></dialog>
   <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true" hidden><span id="toast-message"></span><button id="undo-action" type="button" hidden>撤销</button><button id="toast-close" type="button" class="icon-button" aria-label="关闭提示"><span data-icon="x"></span></button></div>
   <noscript><div class="notice warning">轻记需要开启 JavaScript 才能在本机处理和保存账目。</div></noscript>
 </body>

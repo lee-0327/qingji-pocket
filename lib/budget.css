@@ -1,0 +1,71 @@
+/* Independent budget routes keep their dates and remaining allowance visible. */
+#budget-plans {
+ --budget-space-1: 4px; --budget-space-2: 8px; --budget-space-3: 12px; --budget-space-4: 16px; --budget-space-6: 24px;
+ --budget-note: 12px; --budget-body: 14px; --budget-heading: 18px; --budget-amount: 28px;
+ min-width: 0; padding: var(--budget-space-6); margin-bottom: var(--budget-space-6);
+}
+.budget-plan-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--budget-space-3); }
+.budget-plan-heading h2 { font-size: var(--budget-heading); }
+.budget-plan-eyebrow { margin-bottom: var(--budget-space-1); color: var(--muted); font-size: var(--budget-note); }
+.budget-plan-heading .button { min-height: 44px; flex: 0 0 auto; font-size: var(--budget-body); padding: var(--budget-space-2) var(--budget-space-3); }
+.budget-plan-method, .budget-plan-footnote { margin-top: var(--budget-space-3); color: var(--muted); font-size: var(--budget-note); line-height: 1.8; overflow-wrap: anywhere; }
+.budget-plan-footnote { border-top: 1px solid var(--line); margin-top: var(--budget-space-6); padding-top: var(--budget-space-4); }
+.budget-plan-status { font-size: var(--budget-note); color: var(--green); line-height: 1.7; margin-top: var(--budget-space-3); overflow-wrap: anywhere; }
+.budget-plan-status[data-kind=error] { color: #8a592d; }
+.budget-plan-list { display: grid; grid-template-columns: minmax(0,1fr); gap: var(--budget-space-4); margin-top: var(--budget-space-6); }
+.budget-plan-empty { padding: var(--budget-space-4) 0; }
+.budget-plan-empty h3 { font-size: var(--budget-body); font-weight: 600; }
+.budget-plan-empty p { margin-top: var(--budget-space-2); color: var(--muted); font-size: var(--budget-body); line-height: 1.8; }
+.budget-route-card { min-width: 0; padding: var(--budget-space-4); border: 1px solid var(--line); border-radius: 16px; background: #fbfcf8; }
+.budget-route-card[data-planned=true] { background: #f6f8f2; }
+.budget-route-heading { display: flex; align-items: center; gap: var(--budget-space-3); }
+.budget-route-sticker, .budget-route-sticker .cat-sticker { display: block; width: 44px; height: 44px; flex: 0 0 44px; }
+.budget-route-title { min-width: 0; flex: 1; }
+.budget-route-title h3 { font-size: var(--budget-body); font-weight: 650; line-height: 1.6; overflow-wrap: anywhere; }
+.budget-route-scope { margin-top: 2px; font-size: var(--budget-note); line-height: 1.7; color: #597052; overflow-wrap: anywhere; }
+.budget-route-period { font-size: var(--budget-note); color: var(--muted); line-height: 1.7; margin-top: var(--budget-space-3); overflow-wrap: anywhere; }
+.budget-route-balance { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--budget-space-2) var(--budget-space-3); margin-top: var(--budget-space-4); }
+.budget-route-balance > span { font-size: var(--budget-note); color: var(--muted); }
+.budget-route-remaining { font-size: var(--budget-amount); font-variant-numeric: tabular-nums; font-weight: 650; line-height: 1.4; color: var(--green-dark); overflow-wrap: anywhere; min-width: 0; }
+.budget-route-balance[data-over=true] .budget-route-remaining { color: #925827; }
+.budget-route-pair { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--budget-space-3); margin-top: var(--budget-space-4); }
+.budget-route-pair > span { min-width: 0; }
+.budget-route-pair small { display: block; font-size: var(--budget-note); color: var(--muted); line-height: 1.7; }
+.budget-route-pair strong { display: block; font-size: var(--budget-body); font-weight: 600; font-variant-numeric: tabular-nums; margin-top: var(--budget-space-1); overflow-wrap: anywhere; }
+.budget-route-track { height: 6px; background: #e1e8d9; border-radius: 8px; overflow: hidden; margin-top: var(--budget-space-4); }
+.budget-route-track > span { display: block; height: 100%; background: #789b64; border-radius: 8px; }
+.budget-route-track[data-over=true] > span { background: #a26d3e; }
+.budget-route-breakdown, .budget-route-legacy-note { font-size: var(--budget-note); line-height: 1.8; color: var(--muted); margin-top: var(--budget-space-2); overflow-wrap: anywhere; }
+.budget-route-legacy-note { color: #80613e; }
+.budget-route-actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--budget-space-2); margin-top: var(--budget-space-2); }
+.budget-route-actions button { min-height: 44px; min-width: 52px; font-size: var(--budget-note); padding: var(--budget-space-2); }
+.budget-route-actions .budget-route-delete { color: #92543d; }
+.budget-route-details { margin-top: var(--budget-space-2); border-top: 1px solid var(--line); font-size: var(--budget-note); color: var(--muted); }
+.budget-route-details > summary { min-height: 44px; align-content: center; cursor: pointer; line-height: 1.7; padding: var(--budget-space-2) 0; }
+.budget-route-day { margin-top: var(--budget-space-3); color: var(--muted); font-size: var(--budget-note); }
+.budget-route-records { min-width: 0; }
+.budget-route-records .record-row { min-width: 0; gap: var(--budget-space-2); }
+.budget-route-records .record-info strong { font-size: var(--budget-body); }
+.budget-route-records .record-info small { font-size: var(--budget-note); }
+.budget-route-records .record-amount { font-size: var(--budget-note); }
+.budget-route-records .category-icon, .budget-route-records .category-icon .cat-sticker { width: 36px; height: 36px; flex-basis: 36px; }
+.budget-route-empty { padding: var(--budget-space-3) 0; font-size: var(--budget-note); line-height: 1.8; }
+.budget-route-more, .budget-plan-more { display: block; min-height: 44px; min-width: 120px; font-size: var(--budget-note); margin: var(--budget-space-3) auto 0; }
+.budget-plan-dialog { --budget-space-1: 4px; --budget-space-2: 8px; --budget-space-3: 12px; --budget-space-4: 16px; --budget-space-6: 24px; --budget-note: 12px; --budget-body: 14px; }
+.budget-plan-dialog .dialog-heading { align-items: center; gap: var(--budget-space-3); margin-bottom: var(--budget-space-4); }
+.budget-plan-dialog .dialog-heading h2 { font-size: 20px; }
+.budget-plan-dialog .form-label { display: grid; gap: var(--budget-space-2); margin-top: var(--budget-space-4); font-size: var(--budget-note); line-height: 1.7; min-width: 0; }
+.budget-plan-dialog .form-label input, .budget-plan-dialog .form-label select { display: block; width: 100%; min-width: 0; max-width: 100%; min-height: 44px; border: 1px solid var(--line); border-radius: 10px; background: #fafbf7; padding: 10px 12px; font: inherit; font-size: 16px; color: var(--ink); }
+.budget-plan-dialog .form-label input[type=date], .budget-plan-dialog .form-label input[type=month] { appearance: none; -webkit-appearance: none; }
+.budget-plan-form-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--budget-space-3); }
+.budget-plan-presets { display: flex; align-items: center; gap: var(--budget-space-2); flex-wrap: wrap; }
+.budget-plan-presets button { min-height: 44px; padding: var(--budget-space-2) var(--budget-space-3); min-width: 60px; border: 1px solid #d8e3ce; border-radius: 10px; background: #f3f7ee; color: #496440; font: inherit; font-size: var(--budget-note); }
+.budget-plan-preview { margin-top: var(--budget-space-4); padding: var(--budget-space-3); border: 1px solid #dce5d4; border-radius: 10px; background: #f0f5e9; font-size: var(--budget-note); line-height: 1.8; color: #496440; overflow-wrap: anywhere; }
+.budget-plan-cycle-note { margin-top: var(--budget-space-2); color: var(--muted); font-size: var(--budget-note); line-height: 1.8; }
+.budget-plan-dialog .dialog-actions { padding-top: var(--budget-space-4); padding-bottom: var(--budget-space-2); background: var(--surface); }
+.budget-plan-dialog .dialog-actions button { min-height: 44px; min-width: 64px; }
+.budget-plan-dialog button:disabled { opacity: .6; cursor: default; }
+@media (hover:hover) { .budget-plan-presets button:hover { background: #e7efdf; } .budget-route-actions button:hover { background: #edf2e7; } .budget-route-details > summary:hover { color: var(--green); } }
+@media (max-width:600px) { #budget-plans { padding: var(--budget-space-4); margin-bottom: var(--budget-space-4); } }
+@media (max-width:360px) { .budget-plan-eyebrow { display: none; } .budget-plan-heading .button { font-size: 12px; } .budget-plan-form-grid { grid-template-columns: minmax(0,1fr); gap: 0; } .budget-route-card { padding: var(--budget-space-3); } }
+@media (forced-colors:active) { .budget-route-track { border: 1px solid ButtonText; } .budget-route-track > span { background: Highlight; } .budget-route-card { border-color: ButtonText; } }
