@@ -8,17 +8,18 @@ import{sticker,recordSticker,renderStickers}from'./lib/stickers.js';
 import{checkForUpdate,activateUpdate,getWorkerVersion}from'./lib/updates.js';
 import{createAIAssistant}from'./lib/ai-ui.js';
 import{createChatUI}from'./lib/chat-ui.js';
+import{createSpendingUI}from'./lib/spending-ui.js';
 
 const $=id=>document.getElementById(id);
 const MAX_CENTS=99999999999,MAX_RECORDS=50000;
-const APP_VERSION='20261031-23';
+const APP_VERSION='20261031-24';
 const APP_CACHE='qingji-shell-v1-pages-'+APP_VERSION;
 const APP_VERSION_LABEL=APP_VERSION.replace(/^(\d{4})(\d{2})(\d{2})-(.+)$/,'$1.$2.$3.$4');
 const db=new LocalLedger();
 let state=null,busy=false,lastAction=null,review=null,importBatch=null,ocrAbort=null,offlineAbort=null,toastTimer=null;
 let toastRemaining=0,toastDeadline=0,toastPointerOver=false;
 let currentView='capture',ledgerFilter='all',ledgerStatsCategory='',showAllMonths=false,ledgerLimit=100,waitingWorker=null,appRegistration=null,updateBusy=false;
-let aiAssistant=null,chatUI=null,chatSaveBusy=false;
+let aiAssistant=null,chatUI=null,spendingUI=null,chatSaveBusy=false;
 const captureQueue=[];
 const thisMonth=localDate().slice(0,7);
 const typeLabels={expense:'支出',income:'收入',refund:'退款',transfer:'转账'};
@@ -82,6 +83,7 @@ function openStatsCategory(category){
 }
 function renderStats(){
  const month=$('stats-month').value||thisMonth;const summary=summarize(state.records,month);$('stats-expense').textContent=formatMoney(summary.netExpenseCents);$('stats-income').textContent=formatMoney(summary.incomeCents);$('stats-gross').textContent=`${formatMoney(summary.expenseCents)} / ${formatMoney(summary.refundCents)}`;$('stats-count').textContent=summary.count;
+ if(currentView==='stats')spendingUI?.render({records:state.records,anchorMonth:month,today:localDate()});
  const items=Object.entries(summary.byCategory).filter(([,amount])=>amount!==0).sort((a,b)=>b[1]-a[1]);const max=Math.max(...items.map(([,amount])=>Math.abs(amount)),1);$('category-chart').innerHTML=items.length?items.map(([category,amount])=>`<button type="button" class="category-bar category-drilldown" data-stats-category="${esc(category)}" aria-label="查看${esc(month)}的${esc(category)}已确认支出与退款，净额${esc(formatMoney(amount))}"><span class="category-rank-icon">${categoryIcon(category)}</span><span class="category-rank-info"><span class="row between"><span>${esc(category)}</span><strong class="${amount<0?'negative':''}">${esc(formatMoney(amount))}${amount<0?' · 净退款':''}</strong></span><span class="bar-track"><span class="bar-fill" style="width:${Math.abs(amount)/max*100}%"></span></span></span><span class="category-rank-chevron">${icon('chevron-right')}</span></button>`).join(''):empty('这个月还没有分类支出','待核对和内部转账不计入收支金额。');
  const budget=state.budgets[month];if(!budget){$('budget-display').innerHTML=empty('暂时不设，也没关系','想控制开销时，给这个月设个总预算。');return;}
  const used=Math.max(0,summary.netExpenseCents),remaining=budget-used,over=remaining<0;$('budget-display').innerHTML=`<div class="budget-number">${esc(formatMoney(Math.abs(remaining)))}</div><div class="budget-label">${over?'本月超出预算':'本月剩余额度'} · 总预算 ${esc(formatMoney(budget))}</div><div class="budget-track ${over?'over':''}"><div style="width:${Math.min(100,used/budget*100)}%"></div></div><p class="budget-status ${over?'over':''}">已使用 ${(used/budget*100).toFixed(0)}%${over?'，后面的支出留意一点就好。':'，按自己的节奏来。'}</p>`;
@@ -253,6 +255,7 @@ function attachEvents(){
 function consumeCapture(hash){const params=new URLSearchParams(hash.replace(/^#/,''));if(!params.has('capture'))return;history.replaceState(null,'',location.pathname+location.search);if(!state){showReply('账本尚未打开，这次没有记账。请稍后重新选图。');return;}const incoming=readCapture(hash,state);if(incoming?.error){showReply(incoming.error);return;}const parsed=parseReceipt(incoming.text,{rules:state.rules});if(!parsed.drafts.length){showReply(parsed.reason||'没有找到可记账的交易信息。');return;}if(document.querySelector('dialog[open]')){if(captureQueue.length>=5){showToast('待核对截图已满，本次没有记账，请处理后重选。');return;}captureQueue.push(parsed.drafts);showToast('又收到一张截图，处理完当前内容后继续核对。');}else{showView('capture');openReview(parsed.drafts);}}
 function drainCaptures(){if(captureQueue.length&&!document.querySelector('dialog[open]')){showView('capture');openReview(captureQueue.shift());}}
 async function start(){
+ spendingUI=createSpendingUI({host:$('spending-trend'),renderRecord:recordRow});
  aiAssistant=createAIAssistant({getContext:reviewAIContext,onApply:(field,value)=>{if(!review)return;const id={merchant:'review-merchant',category:'review-category',purpose:'review-purpose'}[field];if(!id)return;$(id).value=value;$(id).dispatchEvent(new Event('input',{bubbles:true}));}});
   chatUI=createChatUI({host:$('view-chat'),getService:()=>aiAssistant.getSessionInfo(),setSessionKey:key=>aiAssistant.setSessionKey(key),onConfigure:configureChatService,request:args=>aiAssistant.requestChat(args),onSave:saveChatDraft,onEdit:editChatDraft,onUndo:undoLast,getUndoableId:()=>lastAction?.ids?.length===1?lastAction.ids[0]:null,getToday:()=>localDate(),isLedgerReady:()=>Boolean(state),sanitizeHistoryText:value=>aiAssistant.sanitizeHistoryText(value),getRecord:id=>{const record=state?.records.find(item=>item.id===id);return record?clone(record):null;}});
  $('app-version').textContent='版本 '+APP_VERSION_LABEL;renderIcons();renderStickers();$('review-category').innerHTML=CATEGORIES.map(category=>`<option>${category}</option>`).join('');$('today-label').textContent=new Date().toLocaleDateString('zh-CN',{month:'long',day:'numeric',weekday:'long'});$('ledger-month').value=thisMonth;$('stats-month').value=thisMonth;attachEvents();

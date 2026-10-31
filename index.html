@@ -15,6 +15,7 @@
   <link rel="apple-touch-icon" href="./icon-192.png">
   <link rel="stylesheet" href="./styles.css">
   <link rel="stylesheet" href="./ui-v2.css">
+  <link rel="stylesheet" href="./lib/spending.css">
   <link rel="stylesheet" href="./lib/chat.css">
   <link rel="stylesheet" href="./lib/chat-history.css">
   <link rel="stylesheet" href="./lib/voice.css">
@@ -82,6 +83,7 @@
       <section id="view-stats" class="view" hidden aria-labelledby="stats-title">
         <div class="page-heading"><div><p class="eyebrow">收支一览</p><h1 id="stats-title">统计</h1></div><label class="month-picker"><span class="sr-only">统计月份</span><input id="stats-month" type="month"></label></div>
         <div class="stats-overview surface"><div><p class="muted">净支出 · 已扣除退款</p><div class="stats-total" id="stats-expense">¥0.00</div></div><div class="stats-secondary"><span>收入<strong id="stats-income">¥0.00</strong></span><span>支出 / 退款<strong id="stats-gross">¥0.00 / ¥0.00</strong></span><span>已确认笔数<strong id="stats-count">0</strong></span></div></div>
+        <section id="spending-trend" class="surface spending-section" aria-label="每周和每月支出趋势"><p class="micro-copy" role="status">正在整理本机支出…</p></section>
         <div class="stats-grid"><section class="surface stats-section"><div class="section-title"><h2>支出分类</h2><span class="muted">点分类看明细</span></div><div id="category-chart"></div></section><section class="surface stats-section"><div class="section-title"><h2>本月预算</h2><button id="edit-budget" class="text-button">设置预算</button></div><div id="budget-display"></div><p class="micro-copy">只做提醒，不限制记账。退款会抵减本月支出。</p></section></div>
       </section>
       <section id="view-settings" class="view" hidden aria-labelledby="settings-title">
